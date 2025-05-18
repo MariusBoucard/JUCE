@@ -123,6 +123,17 @@ if(JUCE_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+if( NOT JUCE_BUILDING_JUCEAID)
+add_subdirectory(libraries)
+endif ()
+
+option(JUCE_BUILD_PROJECTS "Add build targets for the DemoRunner and PIPs" OFF)
+
+if(JUCE_BUILD_PROJECTS AND NOT JUCE_BUILDING_JUCEAID)
+    message("")
+    add_subdirectory(projects)
+endif()
+
 string(CONCAT webview2_option_message "Location that overrides the default directory where our "
                                       "FindWebView2 script is looking for the "
                                       "*Microsoft.Web.WebView2* directory")
