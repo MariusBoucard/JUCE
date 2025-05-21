@@ -1,0 +1,6 @@
+[submodule "projects/GainPlugin"]
+	path = projects/GainPlugin
+	url = https://github.com/MariusBoucard/GainPlugin
+[submodule "projects/BitCrusher"]
+	path = projects/BitCrusher
+	url = https://github.com/MariusBoucard/BitCrusher

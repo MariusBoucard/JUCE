@@ -33,7 +33,10 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(JUCE VERSION 8.0.7 LANGUAGES C CXX)
-
+add_compile_options(-Ob2 -GR)
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL" CACHE STRING "" FORCE) # Forces /MD or /MDd
+endif()
 include(CMakeDependentOption)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
@@ -62,6 +65,8 @@ cmake_dependent_option(JUCE_ENABLE_MODULE_SOURCE_GROUPS
     "NOT JUCE_MODULES_ONLY" OFF)
 
 add_subdirectory(modules)
+
+add_definitions(-DJUCE_MODAL_LOOPS_PERMITTED=1)
 
 if(JUCE_MODULES_ONLY)
     return()
@@ -124,7 +129,7 @@ if(JUCE_BUILD_EXAMPLES)
 endif()
 
 if( NOT JUCE_BUILDING_JUCEAID)
-add_subdirectory(libraries)
+    add_subdirectory(libraries)
 endif ()
 
 option(JUCE_BUILD_PROJECTS "Add build targets for the DemoRunner and PIPs" OFF)
@@ -203,3 +208,12 @@ if(("${CMAKE_SOURCE_DIR}" STREQUAL "${JUCE_SOURCE_DIR}") AND (NOT JUCE_BUILD_HEL
         install(EXPORT VST3_HELPER NAMESPACE juce:: DESTINATION "${JUCE_INSTALL_DESTINATION}")
     endif()
 endif()
+
+ if(MSVC)
+    message("MSVC Flags")
+    set(CMAKE_CXX_FLAGS_RELEASE "/Ox /Ob2 /Gy /GR /DNDEBUG" CACHE STRING "" FORCE)
+ else()
+     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG" CACHE STRING "" FORCE)
+     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG" CACHE STRING "" FORCE)
+ endif()
+
