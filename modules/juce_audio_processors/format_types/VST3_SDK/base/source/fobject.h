@@ -9,7 +9,7 @@
 //
 //-----------------------------------------------------------------------------
 // LICENSE
-// (c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+// (c) 2023, Steinberg Media Technologies GmbH, All Rights Reserved
 //-----------------------------------------------------------------------------
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -125,9 +125,6 @@ public:
 	// static helper functions
 	static inline bool classIDsEqual (FClassID ci1, FClassID ci2);			///< compares (evaluates) 2 class IDs
 	static inline FObject* unknownToObject (FUnknown* unknown);				///< pointer conversion from FUnknown to FObject
-	/** convert from FUnknown to FObject */
-	template <class Class>
-	static inline IPtr<Class> fromUnknown (FUnknown* unknown);
 
 	/** Special UID that is used to cast an FUnknown pointer to a FObject */
 	static const FUID iid;
@@ -143,24 +140,7 @@ protected:
 
 
 //------------------------------------------------------------------------
-// conversion from FUnknown to FObject subclass
-//------------------------------------------------------------------------
-template <class C>
-inline IPtr<C> FObject::fromUnknown (FUnknown* unknown)
-{
-	if (unknown)
-	{
-		FObject* object = nullptr;
-		if (unknown->queryInterface (FObject::iid, (void**)&object) == kResultTrue && object)
-		{
-			if (object->isTypeOf (C::getFClassID (), true))
-				return IPtr<C> (static_cast<C*> (object), false);
-			object->release ();
-		}
-	}
-	return {};
-}
-
+// conversion from FUnknown to FObject
 //------------------------------------------------------------------------
 inline FObject* FObject::unknownToObject (FUnknown* unknown)
 {
@@ -169,10 +149,7 @@ inline FObject* FObject::unknownToObject (FUnknown* unknown)
 	{
 		unknown->queryInterface (FObject::iid, (void**)&object);
 		if (object)
-		{
-			if (object->release () == 0)
-				object = nullptr;
-		}
+			object->release (); // queryInterface has added ref		
 	}
 	return object;
 }
@@ -191,7 +168,7 @@ inline C* FCast (const FObject* object)
 {
 	if (object && object->isTypeOf (C::getFClassID (), true))
 		return (C*) object;
-	return nullptr;
+	return 0;
 }
 
 //-----------------------------------------------------------------------
@@ -205,48 +182,19 @@ inline C* FCast (FUnknown* unknown)
 }
 
 //-----------------------------------------------------------------------
-/** ICast - casting from FObject to FUnknown Interface */
-//-----------------------------------------------------------------------
-template<class I>
-inline IPtr<I> ICast (FObject* object)
-{
-	return FUnknownPtr<I> (object ? object->unknownCast () : nullptr);
-}
-
-//-----------------------------------------------------------------------
-/** ICast - casting from FUnknown to another FUnknown Interface */
-//-----------------------------------------------------------------------
-template<class I>
-inline IPtr<I> ICast (FUnknown* object)
-{
-	return FUnknownPtr<I> (object);
-}
-
-//------------------------------------------------------------------------
-template <class C>
-inline C* FCastIsA (const FObject* object)
-{
-	if (object && object->isA (C::getFClassID ()))
-		return (C*)object;
-	return nullptr;
-}
-
-#ifndef SMTG_HIDE_DEPRECATED_INLINE_FUNCTIONS
-//-----------------------------------------------------------------------
-/** \deprecated FUCast - casting from FUnknown to Interface */
+/** FUCast - casting from FUnknown to Interface */
 //-----------------------------------------------------------------------
 template <class C>
-SMTG_DEPRECATED_MSG("use ICast<>") inline C* FUCast (FObject* object)
+inline C* FUCast (FObject* object)
 {
 	return FUnknownPtr<C> (object ? object->unknownCast () : nullptr);
 }
 
 template <class C>
-SMTG_DEPRECATED_MSG("use ICast<>") inline C* FUCast (FUnknown* object)
+inline C* FUCast (FUnknown* object)
 {
 	return FUnknownPtr<C> (object);
 }
-#endif // SMTG_HIDE_DEPRECATED_FUNCTIONS
 
 //------------------------------------------------------------------------
 /** @name Convenience methods that call release or delete respectively

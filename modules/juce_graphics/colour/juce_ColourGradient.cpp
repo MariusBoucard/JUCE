@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -89,6 +80,8 @@ ColourGradient::ColourGradient (Colour colour1, Point<float> p1,
                  ColourPoint { 1.0, colour2 });
 }
 
+ColourGradient::~ColourGradient() {}
+
 ColourGradient ColourGradient::vertical (Colour c1, float y1, Colour c2, float y2)
 {
     return { c1, 0, y1, c2, 0, y2, false };
@@ -99,45 +92,17 @@ ColourGradient ColourGradient::horizontal (Colour c1, float x1, Colour c2, float
     return { c1, x1, 0, c2, x2, 0, false };
 }
 
-struct PointComparisons
+bool ColourGradient::operator== (const ColourGradient& other) const noexcept
 {
-    auto tie() const { return std::tie (point->x, point->y); }
-
-    bool operator== (const PointComparisons& other) const { return tie() == other.tie(); }
-    bool operator!= (const PointComparisons& other) const { return tie() != other.tie(); }
-    bool operator<  (const PointComparisons& other) const { return tie() <  other.tie(); }
-
-    const Point<float>* point = nullptr;
-};
-
-struct ColourGradient::ColourPointArrayComparisons
-{
-    bool operator== (const ColourPointArrayComparisons& other) const { return *array == *other.array; }
-    bool operator!= (const ColourPointArrayComparisons& other) const { return *array != *other.array; }
-
-    bool operator<  (const ColourPointArrayComparisons& other) const
-    {
-        return std::lexicographical_compare (array->begin(), array->end(), other.array->begin(), other.array->end());
-    }
-
-    const Array<ColourGradient::ColourPoint>* array = nullptr;
-};
-
-auto ColourGradient::tie() const
-{
-    return std::tuple (PointComparisons { &point1 },
-                       PointComparisons { &point2 },
-                       isRadial,
-                       ColourPointArrayComparisons { &colours });
+    return point1 == other.point1 && point2 == other.point2
+            && isRadial == other.isRadial
+            && colours == other.colours;
 }
 
-bool ColourGradient::operator== (const ColourGradient& other) const noexcept { return tie() == other.tie(); }
-bool ColourGradient::operator!= (const ColourGradient& other) const noexcept { return tie() != other.tie(); }
-
-bool ColourGradient::operator<  (const ColourGradient& other) const noexcept { return tie() <  other.tie(); }
-bool ColourGradient::operator<= (const ColourGradient& other) const noexcept { return tie() <= other.tie(); }
-bool ColourGradient::operator>  (const ColourGradient& other) const noexcept { return tie() >  other.tie(); }
-bool ColourGradient::operator>= (const ColourGradient& other) const noexcept { return tie() >= other.tie(); }
+bool ColourGradient::operator!= (const ColourGradient& other) const noexcept
+{
+    return ! operator== (other);
+}
 
 //==============================================================================
 void ColourGradient::clearColours()
@@ -169,7 +134,7 @@ int ColourGradient::addColour (const double proportionAlongGradient, Colour colo
 
 void ColourGradient::removeColour (int index)
 {
-    jassert (isPositiveAndBelow (index, colours.size()));
+    jassert (index > 0 && index < colours.size() - 1);
     colours.remove (index);
 }
 
@@ -289,6 +254,17 @@ bool ColourGradient::isInvisible() const noexcept
             return false;
 
     return true;
+}
+
+bool ColourGradient::ColourPoint::operator== (ColourPoint other) const noexcept
+{
+    const auto tie = [] (const ColourPoint& p) { return std::tie (p.position, p.colour); };
+    return tie (*this) == tie (other);
+}
+
+bool ColourGradient::ColourPoint::operator!= (ColourPoint other) const noexcept
+{
+    return ! operator== (other);
 }
 
 } // namespace juce

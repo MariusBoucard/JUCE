@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -641,29 +632,6 @@ private:
                                                                                            : nextItem;
     }
 
-    template <typename Fn>
-    static void forEachDepthFirst (TreeViewItem* item, bool includeItem, Fn&& callback)
-    {
-        if (includeItem)
-            callback (item);
-
-        if (item->isOpen())
-            for (auto i = 0; i < item->getNumSubItems(); ++i)
-                forEachDepthFirst (item->getSubItem (i), true, callback);
-    }
-
-    std::vector<TreeViewItem*> collectAllItems() const
-    {
-        size_t count{};
-        forEachDepthFirst (owner.rootItem, owner.rootItemVisible, [&] (auto*) { ++count; });
-
-        std::vector<TreeViewItem*> allItems;
-        allItems.reserve (count);
-        forEachDepthFirst (owner.rootItem, owner.rootItemVisible, [&] (auto* item) { allItems.push_back (item); });
-
-        return allItems;
-    }
-
     std::vector<TreeViewItem*> getAllVisibleItems() const
     {
         if (owner.rootItem == nullptr)
@@ -671,27 +639,47 @@ private:
 
         const auto visibleTop = -getY();
         const auto visibleBottom = visibleTop + getParentHeight();
-        auto allItems = collectAllItems();
 
-        const auto lower = std::lower_bound (allItems.begin(), allItems.end(), visibleTop, [] (TreeViewItem* item, const auto y)
+        std::vector<TreeViewItem*> visibleItems;
+
+        auto* item = [&]
         {
-            return item->y + item->getItemHeight() < y;
-        });
+            auto* i = owner.rootItemVisible ? owner.rootItem
+                                            : owner.rootItem->subItems.getFirst();
 
-        const auto upper = std::upper_bound (allItems.begin(), allItems.end(), visibleBottom, [] (const auto y, TreeViewItem* item)
+            while (i != nullptr && i->y + i->getItemHeight() < visibleTop)
+                i = getNextVisibleItem (i, true);
+
+            return i;
+        }();
+
+        auto addOffscreenItemBuffer = [&visibleItems] (TreeViewItem* i, int num, bool forwards)
         {
-            return y < item->y;
-        });
+            while (--num >= 0)
+            {
+                i = getNextVisibleItem (i, forwards);
 
-        const std::ptrdiff_t padding = 2;
+                if (i == nullptr)
+                    return;
 
-        const auto frontToErase = std::max (padding, std::distance (allItems.begin(), lower)) - padding;
-        const auto backToErase  = std::max (padding, std::distance (upper, allItems.end()))   - padding;
+                visibleItems.push_back (i);
+            }
+        };
 
-        allItems.erase (allItems.begin(), std::next (allItems.begin(), frontToErase));
-        allItems.erase (std::prev (allItems.end(), backToErase), allItems.end());
+        addOffscreenItemBuffer (item, 2, false);
 
-        return allItems;
+        while (item != nullptr && item->y < visibleBottom)
+        {
+            visibleItems.push_back (item);
+            item = getNextVisibleItem (item, true);
+        }
+
+        if (item != nullptr)
+            visibleItems.push_back (item);
+
+        addOffscreenItemBuffer (item, 2, true);
+
+        return visibleItems;
     }
 
     //==============================================================================
@@ -825,139 +813,6 @@ private:
     std::optional<Point<int>> viewportAfterRecalculation;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TreeViewport)
-};
-
-//==============================================================================
-struct TreeView::InsertPoint
-{
-    InsertPoint (TreeView& view, const StringArray& files,
-                 const DragAndDropTarget::SourceDetails& dragSourceDetails)
-        : pos (dragSourceDetails.localPosition),
-          item (view.getItemAt (dragSourceDetails.localPosition.y))
-    {
-        if (item != nullptr)
-        {
-            auto itemPos = item->getItemPosition (true);
-            insertIndex = item->getIndexInParent();
-            auto oldY = pos.y;
-            pos.y = itemPos.getY();
-
-            if (item->getNumSubItems() == 0 || ! item->isOpen())
-            {
-                if (files.size() > 0 ? item->isInterestedInFileDrag (files)
-                                     : item->isInterestedInDragSource (dragSourceDetails))
-                {
-                    // Check if we're trying to drag into an empty group item..
-                    if (oldY > itemPos.getY() + itemPos.getHeight() / 4
-                         && oldY < itemPos.getBottom() - itemPos.getHeight() / 4)
-                    {
-                        insertIndex = 0;
-                        pos.x = itemPos.getX() + view.getIndentSize();
-                        pos.y = itemPos.getBottom();
-                        return;
-                    }
-                }
-            }
-
-            if (oldY > itemPos.getCentreY())
-            {
-                pos.y += item->getItemHeight();
-
-                while (item->isLastOfSiblings() && item->getParentItem() != nullptr
-                        && item->getParentItem()->getParentItem() != nullptr)
-                {
-                    if (pos.x > itemPos.getX())
-                        break;
-
-                    item = item->getParentItem();
-                    itemPos = item->getItemPosition (true);
-                    insertIndex = item->getIndexInParent();
-                }
-
-                ++insertIndex;
-            }
-
-            pos.x = itemPos.getX();
-            item = item->getParentItem();
-        }
-        else if (auto* root = view.getRootItem())
-        {
-            // If they're dragging beyond the bottom of the list, then insert at the end of the root item..
-            item = root;
-            insertIndex = root->getNumSubItems();
-            pos = root->getItemPosition (true).getBottomLeft();
-            pos.x += view.getIndentSize();
-        }
-    }
-
-    Point<int> pos;
-    TreeViewItem* item;
-    int insertIndex = 0;
-};
-
-//==============================================================================
-class TreeView::InsertPointHighlight final : public Component
-{
-public:
-    InsertPointHighlight()
-    {
-        setSize (100, 12);
-        setAlwaysOnTop (true);
-        setInterceptsMouseClicks (false, false);
-    }
-
-    void setTargetPosition (const InsertPoint& insertPos, const int width) noexcept
-    {
-        lastItem = insertPos.item;
-        lastIndex = insertPos.insertIndex;
-        auto offset = getHeight() / 2;
-        setBounds (insertPos.pos.x - offset, insertPos.pos.y - offset,
-                   width - (insertPos.pos.x - offset), getHeight());
-    }
-
-    void paint (Graphics& g) override
-    {
-        Path p;
-        auto h = (float) getHeight();
-        p.addEllipse (2.0f, 2.0f, h - 4.0f, h - 4.0f);
-        p.startNewSubPath (h - 2.0f, h / 2.0f);
-        p.lineTo ((float) getWidth(), h / 2.0f);
-
-        g.setColour (findColour (TreeView::dragAndDropIndicatorColourId, true));
-        g.strokePath (p, PathStrokeType (2.0f));
-    }
-
-    TreeViewItem* lastItem = nullptr;
-    int lastIndex = 0;
-
-private:
-    JUCE_DECLARE_NON_COPYABLE (InsertPointHighlight)
-};
-
-//==============================================================================
-class TreeView::TargetGroupHighlight final : public Component
-{
-public:
-    TargetGroupHighlight()
-    {
-        setAlwaysOnTop (true);
-        setInterceptsMouseClicks (false, false);
-    }
-
-    void setTargetPosition (TreeViewItem* const item) noexcept
-    {
-        setBounds (item->getItemPosition (true)
-                     .withHeight (item->getItemHeight()));
-    }
-
-    void paint (Graphics& g) override
-    {
-        g.setColour (findColour (TreeView::dragAndDropIndicatorColourId, true));
-        g.drawRoundedRectangle (1.0f, 1.0f, (float) getWidth() - 2.0f, (float) getHeight() - 2.0f, 3.0f, 2.0f);
-    }
-
-private:
-    JUCE_DECLARE_NON_COPYABLE (TargetGroupHighlight)
 };
 
 //==============================================================================
@@ -1366,6 +1221,139 @@ void TreeView::updateVisibleItems (std::optional<Point<int>> viewportPosition)
 {
     viewport->recalculatePositions (TreeViewport::Async::yes, std::move (viewportPosition));
 }
+
+//==============================================================================
+struct TreeView::InsertPoint
+{
+    InsertPoint (TreeView& view, const StringArray& files,
+                 const DragAndDropTarget::SourceDetails& dragSourceDetails)
+        : pos (dragSourceDetails.localPosition),
+          item (view.getItemAt (dragSourceDetails.localPosition.y))
+    {
+        if (item != nullptr)
+        {
+            auto itemPos = item->getItemPosition (true);
+            insertIndex = item->getIndexInParent();
+            auto oldY = pos.y;
+            pos.y = itemPos.getY();
+
+            if (item->getNumSubItems() == 0 || ! item->isOpen())
+            {
+                if (files.size() > 0 ? item->isInterestedInFileDrag (files)
+                                     : item->isInterestedInDragSource (dragSourceDetails))
+                {
+                    // Check if we're trying to drag into an empty group item..
+                    if (oldY > itemPos.getY() + itemPos.getHeight() / 4
+                         && oldY < itemPos.getBottom() - itemPos.getHeight() / 4)
+                    {
+                        insertIndex = 0;
+                        pos.x = itemPos.getX() + view.getIndentSize();
+                        pos.y = itemPos.getBottom();
+                        return;
+                    }
+                }
+            }
+
+            if (oldY > itemPos.getCentreY())
+            {
+                pos.y += item->getItemHeight();
+
+                while (item->isLastOfSiblings() && item->getParentItem() != nullptr
+                        && item->getParentItem()->getParentItem() != nullptr)
+                {
+                    if (pos.x > itemPos.getX())
+                        break;
+
+                    item = item->getParentItem();
+                    itemPos = item->getItemPosition (true);
+                    insertIndex = item->getIndexInParent();
+                }
+
+                ++insertIndex;
+            }
+
+            pos.x = itemPos.getX();
+            item = item->getParentItem();
+        }
+        else if (auto* root = view.getRootItem())
+        {
+            // If they're dragging beyond the bottom of the list, then insert at the end of the root item..
+            item = root;
+            insertIndex = root->getNumSubItems();
+            pos = root->getItemPosition (true).getBottomLeft();
+            pos.x += view.getIndentSize();
+        }
+    }
+
+    Point<int> pos;
+    TreeViewItem* item;
+    int insertIndex = 0;
+};
+
+//==============================================================================
+class TreeView::InsertPointHighlight final : public Component
+{
+public:
+    InsertPointHighlight()
+    {
+        setSize (100, 12);
+        setAlwaysOnTop (true);
+        setInterceptsMouseClicks (false, false);
+    }
+
+    void setTargetPosition (const InsertPoint& insertPos, const int width) noexcept
+    {
+        lastItem = insertPos.item;
+        lastIndex = insertPos.insertIndex;
+        auto offset = getHeight() / 2;
+        setBounds (insertPos.pos.x - offset, insertPos.pos.y - offset,
+                   width - (insertPos.pos.x - offset), getHeight());
+    }
+
+    void paint (Graphics& g) override
+    {
+        Path p;
+        auto h = (float) getHeight();
+        p.addEllipse (2.0f, 2.0f, h - 4.0f, h - 4.0f);
+        p.startNewSubPath (h - 2.0f, h / 2.0f);
+        p.lineTo ((float) getWidth(), h / 2.0f);
+
+        g.setColour (findColour (TreeView::dragAndDropIndicatorColourId, true));
+        g.strokePath (p, PathStrokeType (2.0f));
+    }
+
+    TreeViewItem* lastItem = nullptr;
+    int lastIndex = 0;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE (InsertPointHighlight)
+};
+
+//==============================================================================
+class TreeView::TargetGroupHighlight final : public Component
+{
+public:
+    TargetGroupHighlight()
+    {
+        setAlwaysOnTop (true);
+        setInterceptsMouseClicks (false, false);
+    }
+
+    void setTargetPosition (TreeViewItem* const item) noexcept
+    {
+        setBounds (item->getItemPosition (true)
+                     .withHeight (item->getItemHeight()));
+    }
+
+    void paint (Graphics& g) override
+    {
+        g.setColour (findColour (TreeView::dragAndDropIndicatorColourId, true));
+        g.drawRoundedRectangle (1.0f, 1.0f, (float) getWidth() - 2.0f, (float) getHeight() - 2.0f, 3.0f, 2.0f);
+    }
+
+private:
+    JUCE_DECLARE_NON_COPYABLE (TargetGroupHighlight)
+};
 
 //==============================================================================
 void TreeView::showDragHighlight (const InsertPoint& insertPos) noexcept

@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -356,38 +347,43 @@ bool StoredSettings::isJUCEPathIncorrect()
 static String getFallbackPathForOS (const Identifier& key, DependencyPathOS os)
 {
     if (key == Ids::jucePath)
-        return (os == TargetOS::windows ? "C:\\JUCE" : "~/JUCE");
-
-    if (key == Ids::defaultJuceModulePath)
-        return (os == TargetOS::windows ? "C:\\JUCE\\modules" : "~/JUCE/modules");
-
-    if (key == Ids::defaultUserModulePath)
-        return (os == TargetOS::windows ? "C:\\modules" : "~/modules");
-
-    if (key == Ids::vstLegacyPath)
-        return {};
-
-    if (key == Ids::aaxPath)
-        return {}; // Empty means "use internal SDK"
-
-    if (key == Ids::araPath)
     {
-        if (os == TargetOS::windows)  return "C:\\SDKs\\ARA_SDK";
-        if (os == TargetOS::osx)      return "~/SDKs/ARA_SDK";
+        return (os == TargetOS::windows ? "C:\\JUCE" : "~/JUCE");
+    }
+    else if (key == Ids::defaultJuceModulePath)
+    {
+        return (os == TargetOS::windows ? "C:\\JUCE\\modules" : "~/JUCE/modules");
+    }
+    else if (key == Ids::defaultUserModulePath)
+    {
+        return (os == TargetOS::windows ? "C:\\modules" : "~/modules");
+    }
+    else if (key == Ids::vstLegacyPath)
+    {
         return {};
     }
-
-    if (key == Ids::androidSDKPath)
+    else if (key == Ids::aaxPath)
     {
-        if (os == TargetOS::windows)  return "${user.home}\\AppData\\Local\\Android\\Sdk";
-        if (os == TargetOS::osx)      return "${user.home}/Library/Android/sdk";
-        if (os == TargetOS::linux)    return "${user.home}/Android/Sdk";
+        if      (os == TargetOS::windows)  return "C:\\SDKs\\AAX";
+        else if (os == TargetOS::osx)      return "~/SDKs/AAX";
+        else                               return {}; // no AAX on this OS!
+    }
+    else if (key == Ids::araPath)
+    {
+        if      (os == TargetOS::windows)  return "C:\\SDKs\\ARA_SDK";
+        else if (os == TargetOS::osx)      return "~/SDKs/ARA_SDK";
+        else                               return {};
+    }
+    else if (key == Ids::androidSDKPath)
+    {
+        if      (os == TargetOS::windows)  return "${user.home}\\AppData\\Local\\Android\\Sdk";
+        else if (os == TargetOS::osx)      return "${user.home}/Library/Android/sdk";
+        else if (os == TargetOS::linux)    return "${user.home}/Android/Sdk";
 
         jassertfalse;
         return {};
     }
-
-    if (key == Ids::androidStudioExePath)
+    else if (key == Ids::androidStudioExePath)
     {
         if (os == TargetOS::windows)
         {
@@ -400,11 +396,14 @@ static String getFallbackPathForOS (const Identifier& key, DependencyPathOS os)
 
             return "C:\\Program Files\\Android\\Android Studio\\bin\\studio64.exe";
         }
-
-        if (os == TargetOS::osx)
+        else if (os == TargetOS::osx)
+        {
             return "/Applications/Android Studio.app";
-
-        return {}; // no Android Studio on this OS!
+        }
+        else
+        {
+            return {}; // no Android Studio on this OS!
+        }
     }
 
     // unknown key!

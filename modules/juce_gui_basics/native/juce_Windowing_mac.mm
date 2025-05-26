@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -62,84 +53,73 @@ static NSView* getNSViewForDragEvent (Component* sourceComp)
     return nil;
 }
 
-class NSDraggingSourceHelper final : public ObjCClass<NSObject<NSDraggingSource, NSPasteboardItemDataProvider>>
+class NSDraggingSourceHelper final : public ObjCClass<NSObject<NSDraggingSource>>
 {
 public:
-    struct DataMembers
+    static void setText (id self, const String& text)
     {
-        std::function<void()> callback;
-        String text;
-        NSDragOperation operation;
-        Component::SafePointer<Component> originator;
-    };
+        object_setInstanceVariable (self, "text", new String (text));
+    }
 
-    static auto* create (DataMembers members)
+    static void setCompletionCallback (id self, std::function<void()> cb)
+    {
+        object_setInstanceVariable (self, "callback", new std::function<void()> (cb));
+    }
+
+    static void setDragOperation (id self, NSDragOperation op)
+    {
+        object_setInstanceVariable (self, "operation", new NSDragOperation (op));
+    }
+
+    static NSDraggingSourceHelper& get()
     {
         static NSDraggingSourceHelper draggingSourceHelper;
-        auto* result = [[draggingSourceHelper.createInstance() init] autorelease];
-        object_setInstanceVariable (result, "members", new DataMembers (std::move (members)));
-        return result;
+        return draggingSourceHelper;
     }
 
 private:
-    static DataMembers* getMembers (id self)
-    {
-        return getIvar<DataMembers*> (self, "members");
-    }
-
     NSDraggingSourceHelper()
         : ObjCClass ("JUCENSDraggingSourceHelper_")
     {
-        addIvar<DataMembers*> ("members");
+        addIvar<std::function<void()>*> ("callback");
+        addIvar<String*> ("text");
+        addIvar<NSDragOperation*> ("operation");
 
         addMethod (@selector (dealloc), [] (id self, SEL)
         {
-            delete getMembers (self);
+            delete getIvar<String*> (self, "text");
+            delete getIvar<std::function<void()>*> (self, "callback");
+            delete getIvar<NSDragOperation*> (self, "operation");
+
             sendSuperclassMessage<void> (self, @selector (dealloc));
         });
 
-        addMethod (@selector (pasteboard:item:provideDataForType:),
-                   [] (id self, SEL, NSPasteboard* sender, NSPasteboardItem*, NSString* type)
+        addMethod (@selector (pasteboard:item:provideDataForType:), [] (id self, SEL, NSPasteboard* sender, NSPasteboardItem*, NSString* type)
         {
             if ([type compare: NSPasteboardTypeString] == NSOrderedSame)
-                if (auto* members = getMembers (self))
-                    [sender setData: [juceStringToNS (members->text) dataUsingEncoding: NSUTF8StringEncoding]
+                if (auto* text = getIvar<String*> (self, "text"))
+                    [sender setData: [juceStringToNS (*text) dataUsingEncoding: NSUTF8StringEncoding]
                             forType: NSPasteboardTypeString];
         });
 
-        addMethod (@selector (draggingSession:sourceOperationMaskForDraggingContext:),
-                   [] (id self, SEL, NSDraggingSession*, NSDraggingContext) -> NSDragOperation
+        addMethod (@selector (draggingSession:sourceOperationMaskForDraggingContext:), [] (id self, SEL, NSDraggingSession*, NSDraggingContext)
         {
-            if (auto* members = getMembers (self))
-                return members->operation;
-
-            return {};
+            return *getIvar<NSDragOperation*> (self, "operation");
         });
 
-        addMethod (@selector (draggingSession:endedAtPoint:operation:),
-                   [] (id self, SEL, NSDraggingSession*, NSPoint p, NSDragOperation)
+        addMethod (@selector (draggingSession:endedAtPoint:operation:), [] (id self, SEL, NSDraggingSession*, NSPoint p, NSDragOperation)
         {
             // Our view doesn't receive a mouse up when the drag ends so we need to generate one here and send it...
-            auto* members = getMembers (self);
-
-            if (members == nullptr)
-                return;
-
-            auto* cgEvent = CGEventCreateMouseEvent (nullptr,
-                                                     kCGEventLeftMouseUp,
-                                                     CGPointMake (p.x, p.y),
-                                                     kCGMouseButtonLeft);
-
-            if (cgEvent != nullptr)
-                if (id e = [NSEvent eventWithCGEvent: cgEvent])
-                    if (auto* view = getNSViewForDragEvent (members->originator))
+            if (auto* view = getNSViewForDragEvent (nullptr))
+                if (auto* cgEvent = CGEventCreateMouseEvent (nullptr, kCGEventLeftMouseUp, CGPointMake (p.x, p.y), kCGMouseButtonLeft))
+                    if (id e = [NSEvent eventWithCGEvent: cgEvent])
                         [view mouseUp: e];
 
-            NullCheckedInvocation::invoke (members->callback);
+            if (auto* cb = getIvar<std::function<void()>*> (self, "callback"))
+                cb->operator()();
         });
 
         addProtocol (@protocol (NSPasteboardItemDataProvider));
-        addProtocol (@protocol (NSDraggingSource));
 
         registerClass();
     }
@@ -157,10 +137,12 @@ bool DragAndDropContainer::performExternalDragDropOfText (const String& text, Co
         {
             if (auto event = [[view window] currentEvent])
             {
-                auto* helper = NSDraggingSourceHelper::create ({ std::move (callback),
-                                                                 text,
-                                                                 NSDragOperationCopy,
-                                                                 sourceComponent });
+                id helper = [NSDraggingSourceHelper::get().createInstance() init];
+                NSDraggingSourceHelper::setText (helper, text);
+                NSDraggingSourceHelper::setDragOperation (helper, NSDragOperationCopy);
+
+                if (callback != nullptr)
+                    NSDraggingSourceHelper::setCompletionCallback (helper, callback);
 
                 auto pasteboardItem = [[NSPasteboardItem new] autorelease];
                 [pasteboardItem setDataProvider: helper
@@ -220,10 +202,13 @@ bool DragAndDropContainer::performExternalDragDropOfFiles (const StringArray& fi
                     [dragItem release];
                 }
 
-                auto* helper = NSDraggingSourceHelper::create ({ std::move (callback),
-                                                                 "",
-                                                                 canMoveFiles ? NSDragOperationMove : NSDragOperationCopy,
-                                                                 sourceComponent });
+                auto helper = [NSDraggingSourceHelper::get().createInstance() autorelease];
+
+                if (callback != nullptr)
+                    NSDraggingSourceHelper::setCompletionCallback (helper, callback);
+
+                NSDraggingSourceHelper::setDragOperation (helper, canMoveFiles ? NSDragOperationMove
+                                                                               : NSDragOperationCopy);
 
                 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wnullable-to-nonnull-conversion")
                 return [view beginDraggingSessionWithItems: dragItems
@@ -430,9 +415,11 @@ struct DisplaySettingsChangeCallback final : private DeletedAtShutdown
 
     std::function<void()> forceDisplayUpdate;
 
-    JUCE_DECLARE_SINGLETON_INLINE (DisplaySettingsChangeCallback, false)
+    JUCE_DECLARE_SINGLETON (DisplaySettingsChangeCallback, false)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DisplaySettingsChangeCallback)
 };
+
+JUCE_IMPLEMENT_SINGLETON (DisplaySettingsChangeCallback)
 
 static Rectangle<int> convertDisplayRect (NSRect r, CGFloat mainScreenBottom)
 {
@@ -459,17 +446,6 @@ static Displays::Display getDisplayFromScreen (NSScreen* s, CGFloat& mainScreenB
     NSSize dpi = [[[s deviceDescription] objectForKey: NSDeviceResolution] sizeValue];
     d.dpi = (dpi.width + dpi.height) / 2.0;
 
-   #if JUCE_MAC_API_VERSION_CAN_BE_BUILT (12, 0)
-    if (@available (macOS 12.0, *))
-    {
-        const auto safeInsets = [s safeAreaInsets];
-        d.safeAreaInsets = detail::WindowingHelpers::roundToInt (BorderSize<double> { safeInsets.top,
-                                                                                      safeInsets.left,
-                                                                                      safeInsets.bottom,
-                                                                                      safeInsets.right }.multipliedBy (1.0 / (double) masterScale));
-    }
-   #endif
-
     return d;
 }
 
@@ -491,8 +467,18 @@ void Displays::findDisplays (const float masterScale)
 static void selectImageForDrawing (const Image& image)
 {
     [NSGraphicsContext saveGraphicsState];
-    [NSGraphicsContext setCurrentContext: [NSGraphicsContext graphicsContextWithCGContext: juce_getImageContext (image)
-                                                                                  flipped: false]];
+
+    if (@available (macOS 10.10, *))
+    {
+        [NSGraphicsContext setCurrentContext: [NSGraphicsContext graphicsContextWithCGContext: juce_getImageContext (image)
+                                                                                      flipped: false]];
+        return;
+    }
+
+    JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
+    [NSGraphicsContext setCurrentContext: [NSGraphicsContext graphicsContextWithGraphicsPort: juce_getImageContext (image)
+                                                                                     flipped: false]];
+    JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 }
 
 static void releaseImageAfterDrawing()
@@ -523,100 +509,37 @@ static Image createNSWindowSnapshot (NSWindow* nsWindow)
 {
     JUCE_AUTORELEASEPOOL
     {
-        const auto createImageFromCGImage = [&] (CGImageRef cgImage)
-        {
-            jassert (cgImage != nullptr);
-
-            const auto width = CGImageGetWidth (cgImage);
-            const auto height = CGImageGetHeight (cgImage);
-            const auto cgRect = CGRectMake (0, 0, (CGFloat) width, (CGFloat) height);
-            const Image image (Image::ARGB, (int) width, (int) height, true);
-
-            CGContextDrawImage (juce_getImageContext (image), cgRect, cgImage);
-
-            return image;
-        };
-
-       #if JUCE_MAC_API_VERSION_MIN_REQUIRED_AT_LEAST (14, 4)
-
-        if (dlopen ("/System/Library/Frameworks/ScreenCaptureKit.framework/ScreenCaptureKit", RTLD_LAZY) == nullptr)
-        {
-            DBG (dlerror());
-            jassertfalse;
-            return {};
-        }
-
-        std::promise<Image> result;
-
-        const auto windowId = nsWindow.windowNumber;
-        const auto windowRect = [nsWindow.screen convertRectToBacking: nsWindow.frame].size;
-
-        const auto onSharableContent = [&] (SCShareableContent* content, NSError* contentError)
-        {
-            if (contentError != nullptr)
-            {
-                jassertfalse;
-                result.set_value (Image{});
-                return;
-            }
-
-            const auto window = [&]() -> SCWindow*
-            {
-                for (SCWindow* w in content.windows)
-                    if (w.windowID == windowId)
-                        return w;
-
-                return nullptr;
-            }();
-
-            if (window == nullptr)
-            {
-                jassertfalse;
-                result.set_value (Image{});
-                return;
-            }
-
-            Class contentFilterClass = NSClassFromString (@"SCContentFilter");
-            SCContentFilter* filter = [[[contentFilterClass alloc] initWithDesktopIndependentWindow: window] autorelease];
-
-            Class streamConfigurationClass = NSClassFromString (@"SCStreamConfiguration");
-            SCStreamConfiguration* config = [[[streamConfigurationClass alloc] init] autorelease];
-            config.colorSpaceName = kCGColorSpaceSRGB;
-            config.showsCursor = NO;
-            config.ignoreShadowsSingleWindow = YES;
-            config.captureResolution = SCCaptureResolutionBest;
-            config.ignoreGlobalClipSingleWindow = YES;
-            config.includeChildWindows = NO;
-            config.width = (size_t) windowRect.width;
-            config.height = (size_t) windowRect.height;
-
-            const auto onScreenshot = [&] (CGImageRef screenshot, NSError* screenshotError)
-            {
-                jassert (screenshotError == nullptr);
-                result.set_value (screenshotError == nullptr ? createImageFromCGImage (screenshot) : Image{});
-            };
-
-            Class screenshotManagerClass = NSClassFromString (@"SCScreenshotManager");
-            [screenshotManagerClass captureImageWithFilter: filter
-                                             configuration: config
-                                         completionHandler: onScreenshot];
-        };
-
-        Class shareableContentClass = NSClassFromString (@"SCShareableContent");
-        [shareableContentClass getCurrentProcessShareableContentWithCompletionHandler: onSharableContent];
-
-        return result.get_future().get();
-
-       #else
-
-        JUCE_BEGIN_IGNORE_DEPRECATION_WARNINGS
-        return createImageFromCGImage ((CGImageRef) CFAutorelease (CGWindowListCreateImage (CGRectNull,
-                                                                                            kCGWindowListOptionIncludingWindow,
-                                                                                            (CGWindowID) [nsWindow windowNumber],
-                                                                                            kCGWindowImageBoundsIgnoreFraming)));
-        JUCE_END_IGNORE_DEPRECATION_WARNINGS
-
+        // CGWindowListCreateImage is replaced by functions in the ScreenCaptureKit framework, but
+        // that framework is only available from macOS 12.3 onwards.
+        // A suitable @available check should be added once the minimum build OS is 12.3 or greater,
+        // so that ScreenCaptureKit can be weak-linked.
+       #if defined (MAC_OS_VERSION_14_0) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_VERSION_14_0
+        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
+        #define JUCE_DEPRECATION_IGNORED 1
        #endif
+
+        CGImageRef screenShot = CGWindowListCreateImage (CGRectNull,
+                                                         kCGWindowListOptionIncludingWindow,
+                                                         (CGWindowID) [nsWindow windowNumber],
+                                                         kCGWindowImageBoundsIgnoreFraming);
+
+       #if JUCE_DEPRECATION_IGNORED
+        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+        #undef JUCE_DEPRECATION_IGNORED
+       #endif
+
+        NSBitmapImageRep* bitmapRep = [[NSBitmapImageRep alloc] initWithCGImage: screenShot];
+
+        Image result (Image::ARGB, (int) [bitmapRep size].width, (int) [bitmapRep size].height, true);
+
+        selectImageForDrawing (result);
+        [bitmapRep drawAtPoint: NSMakePoint (0, 0)];
+        releaseImageAfterDrawing();
+
+        [bitmapRep release];
+        CGImageRelease (screenShot);
+
+        return result;
     }
 }
 
@@ -649,6 +572,15 @@ void SystemClipboard::copyTextToClipboard (const String& text)
 String SystemClipboard::getTextFromClipboard()
 {
     return nsStringToJuce ([[NSPasteboard generalPasteboard] stringForType: NSPasteboardTypeString]);
+}
+
+void Process::setDockIconVisible (bool isVisible)
+{
+    ProcessSerialNumber psn { 0, kCurrentProcess };
+
+    [[maybe_unused]] OSStatus err = TransformProcessType (&psn, isVisible ? kProcessTransformToForegroundApplication
+                                                                          : kProcessTransformToUIElementApplication);
+    jassert (err == 0);
 }
 
 } // namespace juce

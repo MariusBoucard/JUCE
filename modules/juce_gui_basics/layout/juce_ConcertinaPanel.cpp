@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -234,14 +225,14 @@ public:
 
     void paint (Graphics& g) override
     {
-        if (customHeader.get() != nullptr)
-            return;
+        if (customHeaderComponent == nullptr)
+        {
+            const Rectangle<int> area (getWidth(), getHeaderSize());
+            g.reduceClipRegion (area);
 
-        const Rectangle<int> area (getWidth(), getHeaderSize());
-        g.reduceClipRegion (area);
-
-        getLookAndFeel().drawConcertinaPanelHeader (g, area, isMouseOver(), isMouseButtonDown(),
-                                                    getPanel(), *component);
+            getLookAndFeel().drawConcertinaPanelHeader (g, area, isMouseOver(), isMouseButtonDown(),
+                                                        getPanel(), *component);
+        }
     }
 
     void resized() override
@@ -249,8 +240,8 @@ public:
         auto bounds = getLocalBounds();
         auto headerBounds = bounds.removeFromTop (getHeaderSize());
 
-        if (customHeader.get() != nullptr)
-            customHeader.get()->setBounds (headerBounds);
+        if (customHeaderComponent != nullptr)
+            customHeaderComponent->setBounds (headerBounds);
 
         component->setBounds (bounds);
     }
@@ -279,8 +270,13 @@ public:
 
     void setCustomHeaderComponent (Component* headerComponent, bool shouldTakeOwnership)
     {
-        customHeader = CustomHeader (this, OptionalScopedPointer (headerComponent, shouldTakeOwnership));
-        addAndMakeVisible (headerComponent);
+        customHeaderComponent.set (headerComponent, shouldTakeOwnership);
+
+        if (headerComponent != nullptr)
+        {
+            addAndMakeVisible (customHeaderComponent);
+            customHeaderComponent->addMouseListener (this, false);
+        }
     }
 
     OptionalScopedPointer<Component> component;
@@ -288,47 +284,7 @@ public:
 private:
     PanelSizes dragStartSizes;
     int mouseDownY;
-
-    struct CustomHeader
-    {
-        CustomHeader() = default;
-
-        CustomHeader (MouseListener* l, OptionalScopedPointer<Component> c)
-            : listener (l),
-              customHeaderComponent (std::move (c))
-        {
-            if (customHeaderComponent != nullptr)
-                customHeaderComponent->addMouseListener (listener, false);
-        }
-
-        CustomHeader (CustomHeader&& other) noexcept
-            : listener (std::exchange (other.listener, nullptr)),
-              customHeaderComponent (std::exchange (other.customHeaderComponent, {})) {}
-
-        CustomHeader& operator= (CustomHeader&& other) noexcept
-        {
-            std::swap (other.listener, listener);
-            std::swap (other.customHeaderComponent, customHeaderComponent);
-            return *this;
-        }
-
-        CustomHeader (const CustomHeader& other) = delete;
-        CustomHeader& operator= (const CustomHeader& other) = delete;
-
-        ~CustomHeader() noexcept
-        {
-            if (customHeaderComponent != nullptr)
-                customHeaderComponent->removeMouseListener (listener);
-        }
-
-        Component* get() const { return customHeaderComponent.get(); }
-
-    private:
-        MouseListener* listener = nullptr;
-        OptionalScopedPointer<Component> customHeaderComponent;
-    };
-
-    CustomHeader customHeader;
+    OptionalScopedPointer<Component> customHeaderComponent;
 
     int getHeaderSize() const noexcept
     {
@@ -354,7 +310,7 @@ ConcertinaPanel::ConcertinaPanel()
 {
 }
 
-ConcertinaPanel::~ConcertinaPanel() = default;
+ConcertinaPanel::~ConcertinaPanel() {}
 
 int ConcertinaPanel::getNumPanels() const noexcept
 {

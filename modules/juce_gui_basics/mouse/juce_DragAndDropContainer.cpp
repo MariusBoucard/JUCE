@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -324,38 +315,12 @@ private:
 
     void setNewScreenPos (Point<int> screenPos)
     {
-        setTopLeftPosition (std::invoke ([&]
-        {
-            if (auto* p = getParentComponent())
-                return p->getLocalPoint (nullptr, screenPos - imageOffset);
+        auto newPos = screenPos - imageOffset;
 
-           #if JUCE_WINDOWS
-            if (JUCEApplicationBase::isStandaloneApp())
-            {
-                // On Windows, the mouse position is continuous in physical pixels across screen boundaries.
-                // i.e. if two screens are set to different scale factors, when the mouse moves horizontally
-                // between those screens, the mouse's physical y coordinate will be preserved, and if
-                // the mouse moves vertically between screens its physical x coordinate will be preserved.
+        if (auto* p = getParentComponent())
+            newPos = p->getLocalPoint (nullptr, newPos);
 
-                // To avoid the dragged image detaching from the mouse, compute the new top left position
-                // in physical coords and then convert back to logical.
-                // If we were to stay in logical coordinates the whole time, the image may detach from the
-                // mouse because the mouse does not move continuously in logical coordinate space.
-
-                const auto& displays = Desktop::getInstance().getDisplays();
-                const auto physicalPos = displays.logicalToPhysical (screenPos);
-
-                float scale = 1.0f;
-
-                if (auto* p = getPeer())
-                    scale = (float) p->getPlatformScaleFactor();
-
-                return displays.physicalToLogical (physicalPos - (imageOffset * scale));
-            }
-           #endif
-
-            return screenPos - imageOffset;
-        }));
+        setTopLeftPosition (newPos);
     }
 
     void sendDragMove (DragAndDropTarget::SourceDetails& details) const
@@ -430,7 +395,7 @@ private:
                 && sourceToCheck.getIndex() == originalInputSourceIndex);
     }
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DragImageComponent)
+    JUCE_DECLARE_NON_COPYABLE (DragImageComponent)
 };
 
 
@@ -480,28 +445,24 @@ void DragAndDropContainer::startDragging (const var& sourceDescription,
         const auto clipped = (image.getBounds().toDouble() / scaleFactor).getConstrainedPoint (relPos);
 
         Image fade (Image::SingleChannel, image.getWidth(), image.getHeight(), true);
-        {
-            Graphics fadeContext (fade);
+        Graphics fadeContext (fade);
 
-            ColourGradient gradient;
-            gradient.isRadial = true;
-            gradient.point1 = clipped.toFloat() * scaleFactor;
-            gradient.point2 = gradient.point1 + Point<float> (0.0f, scaleFactor * 400.0f);
-            gradient.addColour (0.0, Colours::white);
-            gradient.addColour (0.375, Colours::white);
-            gradient.addColour (1.0, Colours::transparentWhite);
+        ColourGradient gradient;
+        gradient.isRadial = true;
+        gradient.point1 = clipped.toFloat() * scaleFactor;
+        gradient.point2 = gradient.point1 + Point<float> (0.0f, scaleFactor * 400.0f);
+        gradient.addColour (0.0, Colours::white);
+        gradient.addColour (0.375, Colours::white);
+        gradient.addColour (1.0, Colours::transparentWhite);
 
-            fadeContext.setGradientFill (gradient);
-            fadeContext.fillAll();
-        }
+        fadeContext.setGradientFill (gradient);
+        fadeContext.fillAll();
 
         Image composite (Image::ARGB, image.getWidth(), image.getHeight(), true);
-        {
-            Graphics compositeContext (composite);
+        Graphics compositeContext (composite);
 
-            compositeContext.reduceClipRegion (fade, {});
-            compositeContext.drawImageAt (image, 0, 0);
-        }
+        compositeContext.reduceClipRegion (fade, {});
+        compositeContext.drawImageAt (image, 0, 0);
 
         return { ScaledImage (composite, scaleFactor), clipped };
     }();

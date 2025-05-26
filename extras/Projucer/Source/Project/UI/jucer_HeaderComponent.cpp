@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -54,6 +45,9 @@ HeaderComponent::HeaderComponent (ProjectContentComponent* pcc)
     juceIcon.setImage (ImageCache::getFromMemory (BinaryData::juce_icon_png, BinaryData::juce_icon_pngSize), RectanglePlacement::centred);
     addAndMakeVisible (juceIcon);
 
+    addAndMakeVisible (userAvatar);
+    userAvatar.addChangeListener (this);
+
     projectNameLabel.setText ({}, dontSendNotification);
     addAndMakeVisible (projectNameLabel);
 
@@ -64,7 +58,7 @@ HeaderComponent::HeaderComponent (ProjectContentComponent* pcc)
 void HeaderComponent::resized()
 {
     auto bounds = getLocalBounds();
-    configLabel.setFont (FontOptions { (float) bounds.getHeight() / 3.0f });
+    configLabel.setFont ({ (float) bounds.getHeight() / 3.0f });
 
     {
         auto headerBounds = bounds.removeFromLeft (tabsWidth);
@@ -92,6 +86,9 @@ void HeaderComponent::resized()
         exporterBox.setBounds (exporterBounds.removeFromBottom (roundToInt ((float) exporterBounds.getHeight() / 1.8f)));
         configLabel.setBounds (exporterBounds);
     }
+
+    userAvatar.setBounds (bounds.removeFromRight (userAvatar.isDisplaingGPLLogo() ? roundToInt ((float) bounds.getHeight() * 1.9f)
+                                                                                  : bounds.getHeight()).reduced (2));
 }
 
 void HeaderComponent::paint (Graphics& g)
@@ -201,6 +198,13 @@ void HeaderComponent::sidebarTabsWidthChanged (int newWidth)
     resized();
 }
 
+//==============================================================================
+void HeaderComponent::changeListenerCallback (ChangeBroadcaster* source)
+{
+    if (source == &userAvatar)
+        resized();
+}
+
 void HeaderComponent::valueChanged (Value&)
 {
     updateName();
@@ -239,6 +243,9 @@ void HeaderComponent::initialiseButtons()
             if (child.isValid())
                 child.setProperty (ProjectMessages::Ids::isVisible, true, nullptr);
         };
+
+        if (project->hasIncompatibleLicenseTypeAndSplashScreenSetting())
+            setWarningVisible (ProjectMessages::Ids::incompatibleLicense);
 
         if (project->isFileModificationCheckPending())
             setWarningVisible (ProjectMessages::Ids::jucerFileModified);

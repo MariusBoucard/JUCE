@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -244,10 +235,10 @@ void LookAndFeel_V4::drawDocumentWindowTitleBar (DocumentWindow& window, Graphic
     g.setColour (getCurrentColourScheme().getUIColour (ColourScheme::widgetBackground));
     g.fillAll();
 
-    Font font (withDefaultMetrics (FontOptions { (float) h * 0.65f, Font::plain }));
+    Font font ((float) h * 0.65f, Font::plain);
     g.setFont (font);
 
-    auto textW = GlyphArrangement::getStringWidthInt (font, window.getName());
+    auto textW = font.getStringWidth (window.getName());
     auto iconW = 0;
     auto iconH = 0;
 
@@ -284,7 +275,7 @@ void LookAndFeel_V4::drawDocumentWindowTitleBar (DocumentWindow& window, Graphic
 //==============================================================================
 Font LookAndFeel_V4::getTextButtonFont (TextButton&, int buttonHeight)
 {
-    return withDefaultMetrics (FontOptions { jmin (16.0f, (float) buttonHeight * 0.6f) });
+    return { jmin (16.0f, (float) buttonHeight * 0.6f) };
 }
 
 void LookAndFeel_V4::drawButtonBackground (Graphics& g,
@@ -384,9 +375,9 @@ void LookAndFeel_V4::changeToggleButtonWidthToFitText (ToggleButton& button)
     auto fontSize = jmin (15.0f, (float) button.getHeight() * 0.75f);
     auto tickWidth = fontSize * 1.1f;
 
-    Font font (withDefaultMetrics (FontOptions { fontSize }));
+    Font font (fontSize);
 
-    button.setSize (GlyphArrangement::getStringWidthInt (font, button.getButtonText()) + roundToInt (tickWidth) + 14, button.getHeight());
+    button.setSize (font.getStringWidth (button.getButtonText()) + roundToInt (tickWidth) + 14, button.getHeight());
 }
 
 //==============================================================================
@@ -462,7 +453,7 @@ void LookAndFeel_V4::drawAlertBox (Graphics& g, AlertWindow& alert,
         }
 
         GlyphArrangement ga;
-        ga.addFittedText (withDefaultMetrics (FontOptions { (float) iconRect.getHeight() * 0.9f, Font::bold }),
+        ga.addFittedText ({ (float) iconRect.getHeight() * 0.9f, Font::bold },
                           String::charToString ((juce_wchar) (uint8) character),
                           static_cast<float> (iconRect.getX()), static_cast<float> (iconRect.getY()),
                           static_cast<float> (iconRect.getWidth()), static_cast<float> (iconRect.getHeight()),
@@ -485,9 +476,9 @@ void LookAndFeel_V4::drawAlertBox (Graphics& g, AlertWindow& alert,
 }
 
 int LookAndFeel_V4::getAlertWindowButtonHeight()    { return 40; }
-Font LookAndFeel_V4::getAlertWindowTitleFont()      { return withDefaultMetrics (FontOptions { 18.0f, Font::bold }); }
-Font LookAndFeel_V4::getAlertWindowMessageFont()    { return withDefaultMetrics (FontOptions { 16.0f }); }
-Font LookAndFeel_V4::getAlertWindowFont()           { return withDefaultMetrics (FontOptions { 14.0f }); }
+Font LookAndFeel_V4::getAlertWindowTitleFont()      { return { 18.0f, Font::bold }; }
+Font LookAndFeel_V4::getAlertWindowMessageFont()    { return { 16.0f }; }
+Font LookAndFeel_V4::getAlertWindowFont()           { return { 14.0f }; }
 
 //==============================================================================
 void LookAndFeel_V4::drawProgressBar (Graphics& g, ProgressBar& progressBar,
@@ -629,7 +620,7 @@ void LookAndFeel_V4::drawCircularProgressBar (Graphics& g, const ProgressBar& pr
     if (textToShow.isNotEmpty())
     {
         g.setColour (progressBar.findColour (TextButton::textColourOffId));
-        g.setFont (progressBar.withDefaultMetrics (FontOptions { 12.0f, Font::italic }));
+        g.setFont ({ 12.0f, Font::italic });
         g.drawText (textToShow, barBounds, Justification::centred, false);
     }
 }
@@ -882,7 +873,7 @@ void LookAndFeel_V4::getIdealPopupMenuItemSize (const String& text, const bool i
             font.setHeight ((float) standardMenuItemHeight / 1.3f);
 
         idealHeight = standardMenuItemHeight > 0 ? standardMenuItemHeight : roundToInt (font.getHeight() * 1.3f);
-        idealWidth = GlyphArrangement::getStringWidthInt (font, text) + idealHeight * 2;
+        idealWidth = font.getStringWidth (text) + idealHeight * 2;
     }
 }
 
@@ -950,7 +941,7 @@ void LookAndFeel_V4::drawComboBox (Graphics& g, int width, int height, bool,
 
 Font LookAndFeel_V4::getComboBoxFont (ComboBox& box)
 {
-    return withDefaultMetrics (FontOptions { jmin (16.0f, (float) box.getHeight() * 0.85f) });
+    return { jmin (16.0f, (float) box.getHeight() * 0.85f) };
 }
 
 void LookAndFeel_V4::positionComboBoxText (ComboBox& box, Label& label)
@@ -1162,7 +1153,7 @@ void LookAndFeel_V4::drawTooltip (Graphics& g, const String& text, int width, in
     g.setColour (findColour (TooltipWindow::outlineColourId));
     g.drawRoundedRectangle (bounds.toFloat().reduced (0.5f, 0.5f), cornerSize, 1.0f);
 
-    detail::LookAndFeelHelpers::layoutTooltipText (getDefaultMetricsKind(), text, findColour (TooltipWindow::textColourId))
+    detail::LookAndFeelHelpers::layoutTooltipText (text, findColour (TooltipWindow::textColourId))
         .draw (g, { static_cast<float> (width), static_cast<float> (height) });
 }
 
@@ -1268,7 +1259,7 @@ void LookAndFeel_V4::drawPropertyPanelSectionHeader (Graphics& g, const String& 
 
     g.setColour (findColour (PropertyComponent::labelTextColourId));
 
-    g.setFont (withDefaultMetrics (FontOptions { (float) height * 0.7f, Font::bold }));
+    g.setFont ({ (float) height * 0.7f, Font::bold });
     g.drawText (name, textX, 0, width - textX - 4, height, Justification::centredLeft, true);
 }
 
@@ -1440,7 +1431,6 @@ void LookAndFeel_V4::initialiseColours()
         Toolbar::buttonMouseDownBackgroundColourId, currentColourScheme.getUIColour (ColourScheme::UIColour::widgetBackground).contrasting (0.5f).getARGB(),
         Toolbar::labelTextColourId,                 currentColourScheme.getUIColour (ColourScheme::UIColour::defaultText).getARGB(),
         Toolbar::editingModeOutlineColourId,        currentColourScheme.getUIColour (ColourScheme::UIColour::outline).getARGB(),
-        Toolbar::customisationDialogBackgroundColourId, currentColourScheme.getUIColour (ColourScheme::UIColour::widgetBackground).getARGB(),
 
         DrawableButton::textColourId,               currentColourScheme.getUIColour (ColourScheme::UIColour::defaultText).getARGB(),
         DrawableButton::textColourOnId,             currentColourScheme.getUIColour (ColourScheme::UIColour::highlightedText).getARGB(),

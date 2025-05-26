@@ -1,33 +1,21 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2020 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   The code included in this file is provided under the terms of the ISC license
+   http://www.isc.org/downloads/software-support-policy/isc-license. Permission
+   To use, copy, modify, and/or distribute this software for any purpose with or
+   without fee is hereby granted provided that the above copyright notice and
+   this permission notice appear in all copies.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
-
-   Or:
-
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -150,8 +138,8 @@ struct AndroidDocumentDetail
                     return LocalRef<jobject>{};
 
                 LocalRef<jstring> documentId { (jstring) env->CallObjectMethod (cursor, AndroidCursor.getString, idColumnIndex) };
-                return LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                             DocumentsContract.buildDocumentUriUsingTree,
+                return LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract21,
+                                                                             DocumentsContract21.buildDocumentUriUsingTree,
                                                                              treeUri.get(),
                                                                              documentId.get()) };
             }();
@@ -164,11 +152,11 @@ struct AndroidDocumentDetail
 
     static DocumentsContractIteratorEngine makeDocumentsContractIteratorEngine (const GlobalRef& uri)
     {
-        const LocalRef <jobject> documentId { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                                DocumentsContract.getDocumentId,
+        const LocalRef <jobject> documentId { getEnv()->CallStaticObjectMethod (DocumentsContract19,
+                                                                                DocumentsContract19.getDocumentId,
                                                                                 uri.get()) };
-        const LocalRef <jobject> childrenUri { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                                 DocumentsContract.buildChildDocumentsUriUsingTree,
+        const LocalRef <jobject> childrenUri { getEnv()->CallStaticObjectMethod (DocumentsContract21,
+                                                                                 DocumentsContract21.buildChildDocumentsUriUsingTree,
                                                                                  uri.get(),
                                                                                  documentId.get()) };
 
@@ -218,6 +206,9 @@ struct AndroidDocumentDetail
 
     static void setPermissions (const URL& url, jmethodID func)
     {
+        if (getAndroidSDKVersion() < 19)
+            return;
+
         const auto javaUri = urlToUri (url);
 
         if (const auto resolver = AndroidContentUriResolver::getContentResolver())
@@ -231,10 +222,12 @@ struct AndroidDocumentDetail
 
     struct DirectoryIteratorEngine
     {
-        JUCE_BEGIN_IGNORE_DEPRECATION_WARNINGS
+        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
+        JUCE_BEGIN_IGNORE_WARNINGS_MSVC (4996)
         DirectoryIteratorEngine (const File& dir, bool recursive)
             : iterator (dir, recursive, "*", File::findFilesAndDirectories) {}
-        JUCE_END_IGNORE_DEPRECATION_WARNINGS
+        JUCE_END_IGNORE_WARNINGS_MSVC
+        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
         auto read() const { return AndroidDocument::fromFile (iterator.getFile()); }
         bool increment() { return iterator.next(); }
@@ -329,10 +322,34 @@ public:
     virtual AndroidDocumentInfo getInfo() const = 0;
     virtual URL getUrl() const = 0;
     virtual NativeInfo getNativeInfo() const = 0;
-    virtual std::unique_ptr<Pimpl> copyDocumentToParentDocument (const Pimpl&) const = 0;
-    virtual std::unique_ptr<Pimpl> moveDocumentFromParentToParent (const Pimpl&, const Pimpl&) const = 0;
-    virtual std::unique_ptr<Pimpl> renameTo (const String&) const = 0;
-    virtual std::unique_ptr<Pimpl> createChildDocumentWithTypeAndName (const String&, const String&) const = 0;
+
+    virtual std::unique_ptr<Pimpl> copyDocumentToParentDocument (const Pimpl&) const
+    {
+        // This function is not supported on the current platform.
+        jassertfalse;
+        return {};
+    }
+
+    virtual std::unique_ptr<Pimpl> moveDocumentFromParentToParent (const Pimpl&, const Pimpl&) const
+    {
+        // This function is not supported on the current platform.
+        jassertfalse;
+        return {};
+    }
+
+    virtual std::unique_ptr<Pimpl> renameTo (const String&) const
+    {
+        // This function is not supported on the current platform.
+        jassertfalse;
+        return {};
+    }
+
+    virtual std::unique_ptr<Pimpl> createChildDocumentWithTypeAndName (const String&, const String&) const
+    {
+        // This function is not supported on the current platform.
+        jassertfalse;
+        return {};
+    }
 
     File getFile() const { return getUrl().getLocalFile(); }
 
@@ -373,24 +390,25 @@ struct AndroidDocument::Utils
                                                                               AndroidMimeTypeMap.getSingleton) } };
     };
 
-    //==============================================================================
-    class AndroidDocumentPimpl : public Pimpl
+    class AndroidDocumentPimplApi19 : public Pimpl
     {
     public:
-        AndroidDocumentPimpl() = default;
+        AndroidDocumentPimplApi19() = default;
 
-        explicit AndroidDocumentPimpl (const URL& uriIn)
-            : AndroidDocumentPimpl (urlToUri (uriIn)) {}
+        explicit AndroidDocumentPimplApi19 (const URL& uriIn)
+            : AndroidDocumentPimplApi19 (urlToUri (uriIn)) {}
 
-        explicit AndroidDocumentPimpl (const LocalRef<jobject>& uriIn)
+        explicit AndroidDocumentPimplApi19 (const LocalRef<jobject>& uriIn)
             : uri (uriIn) {}
+
+        std::unique_ptr<Pimpl> clone() const override { return std::make_unique<AndroidDocumentPimplApi19> (*this); }
 
         bool deleteDocument() const override
         {
             if (const auto resolver = AndroidContentUriResolver::getContentResolver())
             {
-                return getEnv()->CallStaticBooleanMethod (DocumentsContract,
-                                                          DocumentsContract.deleteDocument,
+                return getEnv()->CallStaticBooleanMethod (DocumentsContract19,
+                                                          DocumentsContract19.deleteDocument,
                                                           resolver.get(),
                                                           uri.get());
             }
@@ -400,10 +418,8 @@ struct AndroidDocument::Utils
 
         std::unique_ptr<InputStream> createInputStream() const override
         {
-            if (auto opened = AndroidContentUriInputStream::fromUri (uri))
-                return std::make_unique<AndroidContentUriInputStream> (std::move (*opened));
-
-            return {};
+            auto result = std::make_unique<AndroidContentUriInputStream> (uri);
+            return result->openedSuccessfully() ? std::move (result) : nullptr;
         }
 
         std::unique_ptr<OutputStream> createOutputStream() const override
@@ -493,10 +509,22 @@ struct AndroidDocument::Utils
 
         NativeInfo getNativeInfo() const override { return { uri }; }
 
+    private:
+        GlobalRef uri;
+    };
+
+    //==============================================================================
+    class AndroidDocumentPimplApi21 : public AndroidDocumentPimplApi19
+    {
+    public:
+        using AndroidDocumentPimplApi19::AndroidDocumentPimplApi19;
+
+        std::unique_ptr<Pimpl> clone() const override { return std::make_unique<AndroidDocumentPimplApi21> (*this); }
+
         std::unique_ptr<Pimpl> createChildDocumentWithTypeAndName (const String& type, const String& name) const override
         {
-            return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                                                   DocumentsContract.createDocument,
+            return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract21,
+                                                                                                   DocumentsContract21.createDocument,
                                                                                                    AndroidContentUriResolver::getContentResolver().get(),
                                                                                                    getNativeInfo().uri.get(),
                                                                                                    javaString (type).get(),
@@ -507,8 +535,8 @@ struct AndroidDocument::Utils
         {
             if (const auto resolver = AndroidContentUriResolver::getContentResolver())
             {
-                return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                                                       DocumentsContract.renameDocument,
+                return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract21,
+                                                                                                       DocumentsContract21.renameDocument,
                                                                                                        resolver.get(),
                                                                                                        getNativeInfo().uri.get(),
                                                                                                        javaString (name).get()) });
@@ -516,8 +544,15 @@ struct AndroidDocument::Utils
 
             return nullptr;
         }
+    };
 
-        std::unique_ptr<Pimpl> clone() const override { return std::make_unique<AndroidDocumentPimpl> (*this); }
+    //==============================================================================
+    class AndroidDocumentPimplApi24 final : public AndroidDocumentPimplApi21
+    {
+    public:
+        using AndroidDocumentPimplApi21::AndroidDocumentPimplApi21;
+
+        std::unique_ptr<Pimpl> clone() const override { return std::make_unique<AndroidDocumentPimplApi24> (*this); }
 
         std::unique_ptr<Pimpl> copyDocumentToParentDocument (const Pimpl& target) const override
         {
@@ -527,8 +562,8 @@ struct AndroidDocument::Utils
                 return {};
             }
 
-            return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                                                   DocumentsContract.copyDocument,
+            return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract24,
+                                                                                                   DocumentsContract24.copyDocument,
                                                                                                    AndroidContentUriResolver::getContentResolver().get(),
                                                                                                    getNativeInfo().uri.get(),
                                                                                                    target.getNativeInfo().uri.get()) });
@@ -542,25 +577,42 @@ struct AndroidDocument::Utils
                 return {};
             }
 
-            return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                                                   DocumentsContract.moveDocument,
+            return Utils::createPimplForSdk (LocalRef<jobject> { getEnv()->CallStaticObjectMethod (DocumentsContract24,
+                                                                                                   DocumentsContract24.moveDocument,
                                                                                                    AndroidContentUriResolver::getContentResolver().get(),
                                                                                                    getNativeInfo().uri.get(),
                                                                                                    currentParent.getNativeInfo().uri.get(),
                                                                                                    newParent.getNativeInfo().uri.get()) });
         }
-
-    private:
-        GlobalRef uri;
     };
 
-    //==============================================================================
     static std::unique_ptr<Pimpl> createPimplForSdk (const LocalRef<jobject>& uri)
     {
         if (jniCheckHasExceptionOccurredAndClear())
             return nullptr;
 
-        return std::make_unique<AndroidDocumentPimpl> (uri);
+        return createPimplForSdkImpl (uri,
+                                      VersionTag<AndroidDocumentPimplApi24> { 24 },
+                                      VersionTag<AndroidDocumentPimplApi21> { 21 },
+                                      VersionTag<AndroidDocumentPimplApi19> { 19 });
+    }
+
+    static std::unique_ptr<Pimpl> createPimplForSdkImpl (const LocalRef<jobject>&)
+    {
+        // Failed to find a suitable implementation for this platform
+        jassertfalse;
+        return nullptr;
+    }
+
+    template <typename T, typename... Ts>
+    static std::unique_ptr<Pimpl> createPimplForSdkImpl (const LocalRef<jobject>& uri,
+                                                         VersionTag<T> head,
+                                                         VersionTag<Ts>... tail)
+    {
+        if (head.version <= getAndroidSDKVersion())
+            return std::make_unique<T> (uri);
+
+        return createPimplForSdkImpl (uri, tail...);
     }
 
    #else
@@ -569,12 +621,12 @@ struct AndroidDocument::Utils
     public:
         static String getMimeTypeFromExtension (const String& str)
         {
-            return detail::MimeTypeTable::getMimeTypesForFileExtension (str)[0];
+            return MimeTypeTable::getMimeTypesForFileExtension (str)[0];
         }
 
         static String getExtensionFromMimeType (const String& str)
         {
-            return detail::MimeTypeTable::getFileExtensionsForMimeType (str)[0];
+            return MimeTypeTable::getFileExtensionsForMimeType (str)[0];
         }
     };
    #endif
@@ -695,14 +747,14 @@ struct AndroidDocument::Utils
 void AndroidDocumentPermission::takePersistentReadWriteAccess ([[maybe_unused]] const URL& url)
 {
    #if JUCE_ANDROID
-    AndroidDocumentDetail::setPermissions (url, ContentResolver.takePersistableUriPermission);
+    AndroidDocumentDetail::setPermissions (url, ContentResolver19.takePersistableUriPermission);
    #endif
 }
 
 void AndroidDocumentPermission::releasePersistentReadWriteAccess ([[maybe_unused]] const URL& url)
 {
    #if JUCE_ANDROID
-    AndroidDocumentDetail::setPermissions (url, ContentResolver.releasePersistableUriPermission);
+    AndroidDocumentDetail::setPermissions (url, ContentResolver19.releasePersistableUriPermission);
    #endif
 }
 
@@ -711,9 +763,12 @@ std::vector<AndroidDocumentPermission> AndroidDocumentPermission::getPersistedPe
    #if ! JUCE_ANDROID
     return {};
    #else
+    if (getAndroidSDKVersion() < 19)
+        return {};
+
     auto* env = getEnv();
     const LocalRef<jobject> permissions { env->CallObjectMethod (AndroidContentUriResolver::getContentResolver().get(),
-                                                                 ContentResolver.getPersistedUriPermissions) };
+                                                                 ContentResolver19.getPersistedUriPermissions) };
 
     if (permissions == nullptr)
         return {};
@@ -760,10 +815,17 @@ AndroidDocument AndroidDocument::fromFile (const File& filePath)
 AndroidDocument AndroidDocument::fromDocument ([[maybe_unused]] const URL& documentUrl)
 {
    #if JUCE_ANDROID
+    if (getAndroidSDKVersion() < 19)
+    {
+        // This function is unsupported on this platform.
+        jassertfalse;
+        return AndroidDocument{};
+    }
+
     const auto javaUri = urlToUri (documentUrl);
 
-    if (! getEnv()->CallStaticBooleanMethod (DocumentsContract,
-                                             DocumentsContract.isDocumentUri,
+    if (! getEnv()->CallStaticBooleanMethod (DocumentsContract19,
+                                             DocumentsContract19.isDocumentUri,
                                              getAppContext().get(),
                                              javaUri.get()))
     {
@@ -779,9 +841,16 @@ AndroidDocument AndroidDocument::fromDocument ([[maybe_unused]] const URL& docum
 AndroidDocument AndroidDocument::fromTree ([[maybe_unused]] const URL& treeUrl)
 {
    #if JUCE_ANDROID
+    if (getAndroidSDKVersion() < 21)
+    {
+        // This function is unsupported on this platform.
+        jassertfalse;
+        return AndroidDocument{};
+    }
+
     const auto javaUri = urlToUri (treeUrl);
-    LocalRef<jobject> treeDocumentId { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                         DocumentsContract.getTreeDocumentId,
+    LocalRef<jobject> treeDocumentId { getEnv()->CallStaticObjectMethod (DocumentsContract21,
+                                                                         DocumentsContract21.getTreeDocumentId,
                                                                          javaUri.get()) };
 
     jniCheckHasExceptionOccurredAndClear();
@@ -792,8 +861,8 @@ AndroidDocument AndroidDocument::fromTree ([[maybe_unused]] const URL& treeUrl)
         return AndroidDocument{};
     }
 
-    LocalRef<jobject> documentUri { getEnv()->CallStaticObjectMethod (DocumentsContract,
-                                                                      DocumentsContract.buildDocumentUriUsingTree,
+    LocalRef<jobject> documentUri { getEnv()->CallStaticObjectMethod (DocumentsContract21,
+                                                                      DocumentsContract21.buildDocumentUriUsingTree,
                                                                       javaUri.get(),
                                                                       treeDocumentId.get()) };
 
@@ -958,6 +1027,14 @@ AndroidDocumentIterator AndroidDocumentIterator::makeNonRecursive (const Android
 
     using Detail = AndroidDocumentDetail;
 
+   #if JUCE_ANDROID
+    if (21 <= getAndroidSDKVersion())
+    {
+        if (auto uri = dir.getNativeInfo().uri)
+            return Utils::makeWithEngine (Detail::makeDocumentsContractIteratorEngine (uri));
+    }
+   #endif
+
     return Utils::makeWithEngineInplace<Detail::DirectoryIteratorEngine> (dir.getUrl().getLocalFile(), false);
 }
 
@@ -967,6 +1044,14 @@ AndroidDocumentIterator AndroidDocumentIterator::makeRecursive (const AndroidDoc
         return {};
 
     using Detail = AndroidDocumentDetail;
+
+   #if JUCE_ANDROID
+    if (21 <= getAndroidSDKVersion())
+    {
+        if (auto uri = dir.getNativeInfo().uri)
+            return Utils::makeWithEngine (Detail::RecursiveEngine { uri });
+    }
+   #endif
 
     return Utils::makeWithEngineInplace<Detail::DirectoryIteratorEngine> (dir.getUrl().getLocalFile(), true);
 }

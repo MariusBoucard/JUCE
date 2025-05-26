@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -247,20 +238,12 @@ Point<int> Viewport::viewportPosToCompPos (Point<int> pos) const
 {
     jassert (contentComp != nullptr);
 
-    const auto contentBounds = getContentBounds();
+    auto contentBounds = contentHolder.getLocalArea (contentComp.get(), contentComp->getLocalBounds());
 
-    const Point p (jmax (jmin (0, contentHolder.getWidth()  - contentBounds.getWidth()),  jmin (0, -(pos.x))),
-                   jmax (jmin (0, contentHolder.getHeight() - contentBounds.getHeight()), jmin (0, -(pos.y))));
+    Point<int> p (jmax (jmin (0, contentHolder.getWidth()  - contentBounds.getWidth()),  jmin (0, -(pos.x))),
+                  jmax (jmin (0, contentHolder.getHeight() - contentBounds.getHeight()), jmin (0, -(pos.y))));
 
     return p.transformedBy (contentComp->getTransform().inverted());
-}
-
-Rectangle<int> Viewport::getContentBounds() const
-{
-    if (auto* cc = contentComp.get())
-        return contentHolder.getLocalArea (cc, cc->getLocalBounds());
-
-    return {};
 }
 
 void Viewport::setViewPosition (const int xPixelsOffset, const int yPixelsOffset)
@@ -414,7 +397,11 @@ void Viewport::updateVisibleArea()
             break;
     }
 
-    const auto contentBounds = getContentBounds();
+    Rectangle<int> contentBounds;
+
+    if (auto cc = contentComp.get())
+        contentBounds = contentHolder.getLocalArea (cc, cc->getLocalBounds());
+
     auto visibleOrigin = -contentBounds.getPosition();
 
     auto& hbar = getHorizontalScrollBar();
@@ -525,22 +512,15 @@ int Viewport::getScrollBarThickness() const
 
 void Viewport::scrollBarMoved (ScrollBar* scrollBarThatHasMoved, double newRangeStart)
 {
-    const auto contentOrigin = -getContentBounds().getPosition();
-    const auto newRangeStartInt = roundToInt (newRangeStart);
+    auto newRangeStartInt = roundToInt (newRangeStart);
 
-    for (const auto& [member, bar] : { std::tuple (&Point<int>::x, horizontalScrollBar.get()),
-                                       std::tuple (&Point<int>::y, verticalScrollBar.get()) })
+    if (scrollBarThatHasMoved == horizontalScrollBar.get())
     {
-        if (scrollBarThatHasMoved != bar)
-            continue;
-
-        if (contentOrigin.*member == newRangeStartInt)
-            return;
-
-        auto pt = getViewPosition();
-        pt.*member = newRangeStartInt;
-        setViewPosition (pt);
-        return;
+        setViewPosition (newRangeStartInt, getViewPositionY());
+    }
+    else if (scrollBarThatHasMoved == verticalScrollBar.get())
+    {
+        setViewPosition (getViewPositionX(), newRangeStartInt);
     }
 }
 

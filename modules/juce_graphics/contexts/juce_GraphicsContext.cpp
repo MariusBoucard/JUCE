@@ -1,39 +1,35 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
 
 namespace juce
 {
+
+struct GraphicsFontHelpers
+{
+    static auto compareFont (const Font& a, const Font& b) { return Font::compare (a, b); }
+};
 
 static auto operator< (const Font& a, const Font& b)
 {
@@ -55,6 +51,14 @@ static auto operator< (const Justification& a, const Justification& b)
 //==============================================================================
 namespace
 {
+    struct ConfiguredArrangement
+    {
+        void draw (const Graphics& g) const { arrangement.draw (g, transform); }
+
+        GlyphArrangement arrangement;
+        AffineTransform transform;
+    };
+
     template <typename ArrangementArgs>
     class GlyphArrangementCache final : public DeletedAtShutdown
     {
@@ -67,31 +71,73 @@ namespace
         }
 
         template <typename ConfigureArrangement>
-        [[nodiscard]] auto get (ArrangementArgs&& args, ConfigureArrangement&& configureArrangement)
+        void draw (const Graphics& g, ArrangementArgs&& args, ConfigureArrangement&& configureArrangement)
         {
             const ScopedTryLock stl (lock);
-            return stl.isLocked() ? cache.get (std::forward<ArrangementArgs> (args), std::forward<ConfigureArrangement> (configureArrangement))
-                                  : configureArrangement (args);
+
+            if (! stl.isLocked())
+            {
+                configureArrangement (args).draw (g);
+                return;
+            }
+
+            const auto cached = [&]
+            {
+                const auto iter = cache.find (args);
+
+                if (iter != cache.end())
+                {
+                    if (iter->second.cachePosition != cacheOrder.begin())
+                        cacheOrder.splice (cacheOrder.begin(), cacheOrder, iter->second.cachePosition);
+
+                    return iter;
+                }
+
+                auto result = cache.emplace (std::move (args), CachedGlyphArrangement { configureArrangement (args), {} }).first;
+                cacheOrder.push_front (result);
+                return result;
+            }();
+
+            cached->second.cachePosition = cacheOrder.begin();
+            cached->second.configured.draw (g);
+
+            while (cache.size() > cacheSize)
+            {
+                cache.erase (cacheOrder.back());
+                cacheOrder.pop_back();
+            }
         }
 
-        JUCE_DECLARE_SINGLETON_INLINE (GlyphArrangementCache<ArrangementArgs>, false)
+        JUCE_DECLARE_SINGLETON (GlyphArrangementCache<ArrangementArgs>, false)
 
     private:
-        LruCache<ArrangementArgs, GlyphArrangement> cache;
+        struct CachedGlyphArrangement
+        {
+            using CachePtr = typename std::map<ArrangementArgs, CachedGlyphArrangement>::const_iterator;
+            ConfiguredArrangement configured;
+            typename std::list<CachePtr>::const_iterator cachePosition;
+        };
+
+        static constexpr size_t cacheSize = 128;
+        std::map<ArrangementArgs, CachedGlyphArrangement> cache;
+        std::list<typename CachedGlyphArrangement::CachePtr> cacheOrder;
         CriticalSection lock;
     };
+
+    template <typename ArrangementArgs>
+    juce::SingletonHolder<GlyphArrangementCache<ArrangementArgs>, juce::CriticalSection, false> GlyphArrangementCache<ArrangementArgs>::singletonHolder;
 
     //==============================================================================
     template <typename Type>
     Rectangle<Type> coordsToRectangle (Type x, Type y, Type w, Type h) noexcept
     {
        #if JUCE_DEBUG
-        constexpr int maxVal = 0x3fffffff;
+        const int maxVal = 0x3fffffff;
 
-        jassertquiet ((int) x >= -maxVal && (int) x <= maxVal
-                   && (int) y >= -maxVal && (int) y <= maxVal
-                   && (int) w >= 0 && (int) w <= maxVal
-                   && (int) h >= 0 && (int) h <= maxVal);
+        jassert ((int) x >= -maxVal && (int) x <= maxVal
+              && (int) y >= -maxVal && (int) y <= maxVal
+              && (int) w >= 0 && (int) w <= maxVal
+              && (int) h >= 0 && (int) h <= maxVal);
        #endif
 
         return { x, y, w, h };
@@ -114,11 +160,9 @@ Graphics::Graphics (LowLevelGraphicsContext& internalContext) noexcept
 //==============================================================================
 void Graphics::resetToDefaultState()
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::resetToDefaultState, etw::graphicsKeyword, context.getFrameId());
-
     saveStateIfPending();
     context.setFill (FillType());
-    context.setFont (FontOptions{}.withMetricsKind (TypefaceMetricsKind::legacy));
+    context.setFont (Font());
     context.setInterpolationQuality (Graphics::mediumResamplingQuality);
 }
 
@@ -129,8 +173,6 @@ bool Graphics::isVectorDevice() const
 
 bool Graphics::reduceClipRegion (Rectangle<int> area)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_I32 (etw::reduceClipRegionRectangle, etw::graphicsKeyword, context.getFrameId(), area)
-
     saveStateIfPending();
     return context.clipToRectangle (area);
 }
@@ -142,16 +184,12 @@ bool Graphics::reduceClipRegion (int x, int y, int w, int h)
 
 bool Graphics::reduceClipRegion (const RectangleList<int>& clipRegion)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_I32 (etw::reduceClipRegionRectangleList, etw::graphicsKeyword, context.getFrameId(), clipRegion)
-
     saveStateIfPending();
     return context.clipToRectangleList (clipRegion);
 }
 
 bool Graphics::reduceClipRegion (const Path& path, const AffineTransform& transform)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::reduceClipRegionPath, etw::graphicsKeyword, context.getFrameId());
-
     saveStateIfPending();
     context.clipToPath (path, transform);
     return ! context.isClipEmpty();
@@ -159,8 +197,6 @@ bool Graphics::reduceClipRegion (const Path& path, const AffineTransform& transf
 
 bool Graphics::reduceClipRegion (const Image& image, const AffineTransform& transform)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::reduceClipRegionImage, etw::graphicsKeyword, context.getFrameId());
-
     saveStateIfPending();
     context.clipToImageAlpha (image, transform);
     return ! context.isClipEmpty();
@@ -168,8 +204,6 @@ bool Graphics::reduceClipRegion (const Image& image, const AffineTransform& tran
 
 void Graphics::excludeClipRegion (Rectangle<int> rectangleToExclude)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_I32 (etw::excludeClipRegion, etw::graphicsKeyword, context.getFrameId(), rectangleToExclude);
-
     saveStateIfPending();
     context.excludeClipRectangle (rectangleToExclude);
 }
@@ -186,16 +220,12 @@ Rectangle<int> Graphics::getClipBounds() const
 
 void Graphics::saveState()
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::saveState, etw::graphicsKeyword, context.getFrameId());
-
     saveStateIfPending();
     saveStatePending = true;
 }
 
 void Graphics::restoreState()
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::restoreState, etw::graphicsKeyword, context.getFrameId());
-
     if (saveStatePending)
         saveStatePending = false;
     else
@@ -206,8 +236,6 @@ void Graphics::saveStateIfPending()
 {
     if (saveStatePending)
     {
-        JUCE_SCOPED_TRACE_EVENT_FRAME (etw::saveState, etw::graphicsKeyword, context.getFrameId());
-
         saveStatePending = false;
         context.saveState();
     }
@@ -226,8 +254,6 @@ void Graphics::setOrigin (int x, int y)
 
 void Graphics::addTransform (const AffineTransform& transform)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::addTransform, etw::graphicsKeyword, context.getFrameId());
-
     saveStateIfPending();
     context.addTransform (transform);
 }
@@ -239,16 +265,12 @@ bool Graphics::clipRegionIntersects (Rectangle<int> area) const
 
 void Graphics::beginTransparencyLayer (float layerOpacity)
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::beginTransparencyLayer, etw::graphicsKeyword, context.getFrameId());
-
     saveStateIfPending();
     context.beginTransparencyLayer (layerOpacity);
 }
 
 void Graphics::endTransparencyLayer()
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::endTransparencyLayer, etw::graphicsKeyword, context.getFrameId());
-
     context.endTransparencyLayer();
 }
 
@@ -325,41 +347,36 @@ void Graphics::drawSingleLineText (const String& text, const int startX, const i
 
     struct ArrangementArgs
     {
-        auto tie() const noexcept { return std::tie (font, text); }
+        auto tie() const noexcept { return std::tie (font, text, startX, baselineY); }
         bool operator< (const ArrangementArgs& other) const { return tie() < other.tie(); }
 
         const Font font;
         const String text;
+        const int startX, baselineY, flags;
     };
 
     auto configureArrangement = [] (const ArrangementArgs& args)
     {
+        AffineTransform transform;
         GlyphArrangement arrangement;
-        arrangement.addLineOfText (args.font, args.text, 0.0f, 0.0f);
-        return arrangement;
+        arrangement.addLineOfText (args.font, args.text, (float) args.startX, (float) args.baselineY);
+
+        if (args.flags != Justification::left)
+        {
+            auto w = arrangement.getBoundingBox (0, -1, true).getWidth();
+
+            if ((args.flags & (Justification::horizontallyCentred | Justification::horizontallyJustified)) != 0)
+                w /= 2.0f;
+
+            transform = AffineTransform::translation (-w, 0);
+        }
+
+        return ConfiguredArrangement { std::move (arrangement), std::move (transform) };
     };
 
-    using Cache = GlyphArrangementCache<ArrangementArgs>;
-    ArrangementArgs args { context.getFont(), text };
-    const auto arrangement = Cache::getInstance()->get (std::move (args), std::move (configureArrangement));
-
-    const auto transform = std::invoke ([&]
-    {
-        const auto t = AffineTransform::translation ((float) startX,
-                                                     (float) baselineY);
-
-        if (flags == Justification::left)
-            return t;
-
-        auto w = arrangement.getBoundingBox (0, -1, true).getWidth();
-
-        if ((flags & (Justification::horizontallyCentred | Justification::horizontallyJustified)) != 0)
-            w /= 2.0f;
-
-        return t.followedBy (AffineTransform::translation (-w, 0));
-    });
-
-    arrangement.draw (*this, transform);
+    GlyphArrangementCache<ArrangementArgs>::getInstance()->draw (*this,
+                                                                 { context.getFont(), text, startX, baselineY, flags },
+                                                                 std::move (configureArrangement));
 }
 
 void Graphics::drawMultiLineText (const String& text, const int startX,
@@ -371,12 +388,12 @@ void Graphics::drawMultiLineText (const String& text, const int startX,
 
     struct ArrangementArgs
     {
-        auto tie() const noexcept { return std::tie (font, text, maximumLineWidth, justification, leading); }
+        auto tie() const noexcept { return std::tie (font, text, startX, baselineY, maximumLineWidth, justification, leading); }
         bool operator< (const ArrangementArgs& other) const { return tie() < other.tie(); }
 
         const Font font;
         const String text;
-        const int maximumLineWidth;
+        const int startX, baselineY, maximumLineWidth;
         const Justification justification;
         const float leading;
     };
@@ -385,21 +402,14 @@ void Graphics::drawMultiLineText (const String& text, const int startX,
     {
         GlyphArrangement arrangement;
         arrangement.addJustifiedText (args.font, args.text,
-                                      0.0f, 0.0f, (float) args.maximumLineWidth,
+                                      (float) args.startX, (float) args.baselineY, (float) args.maximumLineWidth,
                                       args.justification, args.leading);
-        return arrangement;
+        return ConfiguredArrangement { std::move (arrangement), {} };
     };
 
-    ArrangementArgs args { context.getFont(),
-                           text,
-                           maximumLineWidth,
-                           justification,
-                           leading };
-
-    using Cache = GlyphArrangementCache<ArrangementArgs>;
-    Cache::getInstance()->get (std::move (args), std::move (configureArrangement))
-                         .draw (*this, AffineTransform::translation ((float) startX,
-                                                                     (float) baselineY));
+    GlyphArrangementCache<ArrangementArgs>::getInstance()->draw (*this,
+                                                                 { context.getFont(), text, startX, baselineY, maximumLineWidth, justification, leading },
+                                                                 std::move (configureArrangement));
 }
 
 void Graphics::drawText (const String& text, Rectangle<float> area,
@@ -410,13 +420,12 @@ void Graphics::drawText (const String& text, Rectangle<float> area,
 
     struct ArrangementArgs
     {
-        auto tie() const noexcept { return std::tie (font, text, width, height, justificationType, useEllipsesIfTooBig); }
+        auto tie() const noexcept { return std::tie (font, text, area, justificationType, useEllipsesIfTooBig); }
         bool operator< (const ArrangementArgs& other) const { return tie() < other.tie(); }
 
         const Font font;
         const String text;
-        const float width;
-        const float height;
+        const Rectangle<float> area;
         const Justification justificationType;
         const bool useEllipsesIfTooBig;
     };
@@ -425,25 +434,17 @@ void Graphics::drawText (const String& text, Rectangle<float> area,
     {
         GlyphArrangement arrangement;
         arrangement.addCurtailedLineOfText (args.font, args.text, 0.0f, 0.0f,
-                                            args.width, args.useEllipsesIfTooBig);
+                                            args.area.getWidth(), args.useEllipsesIfTooBig);
 
         arrangement.justifyGlyphs (0, arrangement.getNumGlyphs(),
-                                   0.0f, 0.0f,
-                                   args.width, args.height,
+                                   args.area.getX(), args.area.getY(), args.area.getWidth(), args.area.getHeight(),
                                    args.justificationType);
-        return arrangement;
+        return ConfiguredArrangement { std::move (arrangement), {} };
     };
 
-    ArrangementArgs args { context.getFont(),
-                           text,
-                           area.getWidth(),
-                           area.getHeight(),
-                           justificationType,
-                           useEllipsesIfTooBig };
-
-    using Cache = GlyphArrangementCache<ArrangementArgs>;
-    Cache::getInstance()->get (std::move (args), std::move (configureArrangement))
-                         .draw (*this, AffineTransform::translation (area.getX(), area.getY()));
+    GlyphArrangementCache<ArrangementArgs>::getInstance()->draw (*this,
+                                                                 { context.getFont(), text, area, justificationType, useEllipsesIfTooBig },
+                                                                 std::move (configureArrangement));
 }
 
 void Graphics::drawText (const String& text, Rectangle<int> area,
@@ -468,13 +469,12 @@ void Graphics::drawFittedText (const String& text, Rectangle<int> area,
 
     struct ArrangementArgs
     {
-        auto tie() const noexcept { return std::tie (font, text, width, height, justification, maximumNumberOfLines, minimumHorizontalScale); }
+        auto tie() const noexcept { return std::tie (font, text, area, justification, maximumNumberOfLines, minimumHorizontalScale); }
         bool operator< (const ArrangementArgs& other) const noexcept { return tie() < other.tie(); }
 
         const Font font;
         const String text;
-        const float width;
-        const float height;
+        const Rectangle<float> area;
         const Justification justification;
         const int maximumNumberOfLines;
         const float minimumHorizontalScale;
@@ -484,26 +484,17 @@ void Graphics::drawFittedText (const String& text, Rectangle<int> area,
     {
         GlyphArrangement arrangement;
         arrangement.addFittedText (args.font, args.text,
-                                   0.0f, 0.0f,
-                                   args.width, args.height,
+                                   args.area.getX(), args.area.getY(),
+                                   args.area.getWidth(), args.area.getHeight(),
                                    args.justification,
                                    args.maximumNumberOfLines,
                                    args.minimumHorizontalScale);
-        return arrangement;
+        return ConfiguredArrangement { std::move (arrangement), {} };
     };
 
-    ArrangementArgs args { context.getFont(),
-                           text,
-                           (float) area.getWidth(),
-                           (float) area.getHeight(),
-                           justification,
-                           maximumNumberOfLines,
-                           minimumHorizontalScale };
-
-    using Cache = GlyphArrangementCache<ArrangementArgs>;
-    Cache::getInstance()->get (std::move (args), std::move (configureArrangement))
-                         .draw (*this, AffineTransform::translation ((float) area.getX(),
-                                                                     (float) area.getY()));
+    GlyphArrangementCache<ArrangementArgs>::getInstance()->draw (*this,
+                                                                 { context.getFont(), text, area.toFloat(), justification, maximumNumberOfLines, minimumHorizontalScale },
+                                                                 std::move (configureArrangement));
 }
 
 void Graphics::drawFittedText (const String& text, int x, int y, int width, int height,
@@ -518,62 +509,42 @@ void Graphics::drawFittedText (const String& text, int x, int y, int width, int 
 //==============================================================================
 void Graphics::fillRect (Rectangle<int> r) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_I32 (etw::fillRect, etw::graphicsKeyword, context.getFrameId(), r)
-
     context.fillRect (r, false);
 }
 
 void Graphics::fillRect (Rectangle<float> r) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_F32 (etw::fillRect, etw::graphicsKeyword, context.getFrameId(), r)
-
     context.fillRect (r);
 }
 
 void Graphics::fillRect (int x, int y, int width, int height) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_I32 (etw::fillRect, etw::graphicsKeyword, context.getFrameId(), (Rectangle { x, y, width, height }))
-
     context.fillRect (coordsToRectangle (x, y, width, height), false);
 }
 
 void Graphics::fillRect (float x, float y, float width, float height) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_F32 (etw::fillRect, etw::graphicsKeyword, context.getFrameId(), (Rectangle { x, y, width, height }))
-
     fillRect (coordsToRectangle (x, y, width, height));
 }
 
 void Graphics::fillRectList (const RectangleList<float>& rectangles) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_F32 (etw::fillRectList, etw::graphicsKeyword, context.getFrameId(), rectangles)
-
     context.fillRectList (rectangles);
 }
 
 void Graphics::fillRectList (const RectangleList<int>& rects) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_I32 (etw::fillRectList, etw::graphicsKeyword, context.getFrameId(), rects)
-
-    RectangleList<float> converted;
-
-    for (const auto& r : rects)
-        converted.add (r.toFloat());
-
-    context.fillRectList (converted);
+    for (auto& r : rects)
+        context.fillRect (r, false);
 }
 
 void Graphics::fillAll() const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::fillAll, etw::graphicsKeyword, context.getFrameId())
-
     context.fillAll();
 }
 
 void Graphics::fillAll (Colour colourToUse) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::fillAll, etw::graphicsKeyword, context.getFrameId())
-
     if (! colourToUse.isTransparent())
     {
         context.saveState();
@@ -583,19 +554,16 @@ void Graphics::fillAll (Colour colourToUse) const
     }
 }
 
+
 //==============================================================================
 void Graphics::fillPath (const Path& path) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::fillPath, etw::graphicsKeyword, context.getFrameId());
-
     if (! (context.isClipEmpty() || path.isEmpty()))
         context.fillPath (path, AffineTransform());
 }
 
 void Graphics::fillPath (const Path& path, const AffineTransform& transform) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::fillPath, etw::graphicsKeyword, context.getFrameId())
-
     if (! (context.isClipEmpty() || path.isEmpty()))
         context.fillPath (path, transform);
 }
@@ -604,10 +572,9 @@ void Graphics::strokePath (const Path& path,
                            const PathStrokeType& strokeType,
                            const AffineTransform& transform) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME (etw::strokePath, etw::graphicsKeyword, context.getFrameId())
-
-    if (! (context.isClipEmpty() || path.isEmpty()))
-        context.strokePath (path, strokeType, transform);
+    Path stroke;
+    strokeType.createStrokedPath (stroke, path, transform, context.getPhysicalPixelScaleFactor());
+    fillPath (stroke);
 }
 
 //==============================================================================
@@ -628,16 +595,22 @@ void Graphics::drawRect (Rectangle<int> r, int lineThickness) const
 
 void Graphics::drawRect (Rectangle<float> r, const float lineThickness) const
 {
-    JUCE_SCOPED_TRACE_EVENT_FRAME_RECT_F32 (etw::drawRect, etw::graphicsKeyword, context.getFrameId(), r)
-
     jassert (r.getWidth() >= 0.0f && r.getHeight() >= 0.0f);
-    context.drawRect (r, lineThickness);
+
+    RectangleList<float> rects;
+    rects.addWithoutMerging (r.removeFromTop    (lineThickness));
+    rects.addWithoutMerging (r.removeFromBottom (lineThickness));
+    rects.addWithoutMerging (r.removeFromLeft   (lineThickness));
+    rects.addWithoutMerging (r.removeFromRight  (lineThickness));
+    context.fillRectList (rects);
 }
 
 //==============================================================================
 void Graphics::fillEllipse (Rectangle<float> area) const
 {
-    context.fillEllipse (area);
+    Path p;
+    p.addEllipse (area);
+    fillPath (p);
 }
 
 void Graphics::fillEllipse (float x, float y, float w, float h) const
@@ -652,7 +625,21 @@ void Graphics::drawEllipse (float x, float y, float width, float height, float l
 
 void Graphics::drawEllipse (Rectangle<float> area, float lineThickness) const
 {
-    context.drawEllipse (area, lineThickness);
+    Path p;
+
+    if (approximatelyEqual (area.getWidth(), area.getHeight()))
+    {
+        // For a circle, we can avoid having to generate a stroke
+        p.addEllipse (area.expanded (lineThickness * 0.5f));
+        p.addEllipse (area.reduced  (lineThickness * 0.5f));
+        p.setUsingNonZeroWinding (false);
+        fillPath (p);
+    }
+    else
+    {
+        p.addEllipse (area);
+        strokePath (p, PathStrokeType (lineThickness));
+    }
 }
 
 void Graphics::fillRoundedRectangle (float x, float y, float width, float height, float cornerSize) const
@@ -662,7 +649,9 @@ void Graphics::fillRoundedRectangle (float x, float y, float width, float height
 
 void Graphics::fillRoundedRectangle (Rectangle<float> r, const float cornerSize) const
 {
-    context.fillRoundedRectangle (r, cornerSize);
+    Path p;
+    p.addRoundedRectangle (r, cornerSize);
+    fillPath (p);
 }
 
 void Graphics::drawRoundedRectangle (float x, float y, float width, float height,
@@ -673,7 +662,9 @@ void Graphics::drawRoundedRectangle (float x, float y, float width, float height
 
 void Graphics::drawRoundedRectangle (Rectangle<float> r, float cornerSize, float lineThickness) const
 {
-    context.drawRoundedRectangle (r, cornerSize, lineThickness);
+    Path p;
+    p.addRoundedRectangle (r, cornerSize);
+    strokePath (p, PathStrokeType (lineThickness));
 }
 
 void Graphics::drawArrow (Line<float> line, float lineThickness, float arrowheadWidth, float arrowheadLength) const
@@ -760,7 +751,9 @@ void Graphics::drawLine (float x1, float y1, float x2, float y2, float lineThick
 
 void Graphics::drawLine (Line<float> line, const float lineThickness) const
 {
-    context.drawLineWithThickness (line, lineThickness);
+    Path p;
+    p.addLineSegment (line, lineThickness);
+    fillPath (p);
 }
 
 void Graphics::drawDashedLine (Line<float> line, const float* dashLengths,
@@ -870,77 +863,5 @@ Graphics::ScopedSaveState::~ScopedSaveState()
 {
     context.restoreState();
 }
-
-//==============================================================================
-//==============================================================================
-#if JUCE_UNIT_TESTS
-
-class GraphicsTests : public UnitTest
-{
-public:
-    GraphicsTests() : UnitTest ("Graphics", UnitTestCategories::graphics) {}
-
-    void runTest() override
-    {
-        beginTest ("Render image subsection");
-        {
-            const SoftwareImageType softwareImageType;
-            const NativeImageType nativeImageType;
-            const ImageType* types[] { &softwareImageType, &nativeImageType };
-
-            for (auto* sourceType : types)
-                for (auto* targetType : types)
-                    renderImageSubsection (*sourceType, *targetType);
-        }
-    }
-
-private:
-    void renderImageSubsection (const ImageType& sourceType, const ImageType& targetType)
-    {
-        const auto sourceColour = Colours::cyan;
-        const auto sourceOffset = 49;
-
-        const Image source { Image::ARGB, 50, 50, true, sourceType };
-        const Image target { Image::ARGB, 50, 50, true, targetType };
-
-        const auto subsection = source.getClippedImage (Rectangle { sourceOffset, sourceOffset, 1, 1 });
-
-        Image::BitmapData { subsection, Image::BitmapData::writeOnly }.setPixelColour (0, 0, sourceColour);
-
-        {
-            // Render the subsection image so that it fills 'target'
-            Graphics g { target };
-            // Use low resampling quality, because we want to avoid our pixel getting blurry when it's scaled up
-            g.setImageResamplingQuality (Graphics::lowResamplingQuality);
-            g.drawImage (subsection,
-                         0, 0, target.getWidth(), target.getHeight(),
-                         0, 0, 1, 1);
-        }
-
-        {
-            // Check that all pixels in 'target' match the bottom right pixel of 'source'
-            const Image::BitmapData bitmap { target, Image::BitmapData::readOnly };
-
-            int numFailures = 0;
-
-            for (auto y = 0; y < bitmap.height; ++y)
-            {
-                for (auto x = 0; x < bitmap.width; ++x)
-                {
-                    const auto targetColour = bitmap.getPixelColour (x, y);
-
-                    if (targetColour != sourceColour)
-                        ++numFailures;
-                }
-            }
-
-            expect (numFailures == 0);
-        }
-    }
-};
-
-static GraphicsTests graphicsTests;
-
-#endif
 
 } // namespace juce

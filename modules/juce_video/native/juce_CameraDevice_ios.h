@@ -1,88 +1,32 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
 
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
+
 struct CameraDevice::Pimpl
 {
-    static void applyDeviceOrientation (AVCaptureDevice*, AVCaptureVideoPreviewLayer*, AVCaptureConnection* outputConnection)
-    {
-        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
-        const auto statusBarOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        const auto videoOrientation = statusBarOrientation != UIInterfaceOrientationUnknown
-                                    ? (AVCaptureVideoOrientation) statusBarOrientation
-                                    : AVCaptureVideoOrientationPortrait;
-        outputConnection.videoOrientation = videoOrientation;
-        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
-    }
-
-    struct PreviewLayerAngleTrait
-    {
-       #if JUCE_IOS_API_VERSION_CAN_BE_BUILT (17, 0)
-        API_AVAILABLE (ios (17))
-        static void newFn (AVCaptureDevice* device, AVCaptureVideoPreviewLayer* previewLayer, AVCaptureConnection* outputConnection)
-        {
-            const NSUniquePtr<AVCaptureDeviceRotationCoordinator> coordinator
-            {
-                [[AVCaptureDeviceRotationCoordinator alloc] initWithDevice: device
-                                                              previewLayer: previewLayer]
-            };
-
-            outputConnection.videoRotationAngle = coordinator.get().videoRotationAngleForHorizonLevelPreview;
-        }
-       #endif
-
-        static constexpr auto oldFn = applyDeviceOrientation;
-    };
-
-    struct CaptureLayerAngleTrait
-    {
-       #if JUCE_IOS_API_VERSION_CAN_BE_BUILT (17, 0)
-        API_AVAILABLE (ios (17))
-        static void newFn (AVCaptureDevice* device, AVCaptureVideoPreviewLayer* previewLayer, AVCaptureConnection* outputConnection)
-        {
-            const NSUniquePtr<AVCaptureDeviceRotationCoordinator> coordinator
-            {
-                [[AVCaptureDeviceRotationCoordinator alloc] initWithDevice: device
-                                                              previewLayer: previewLayer]
-            };
-
-            outputConnection.videoRotationAngle = coordinator.get().videoRotationAngleForHorizonLevelCapture;
-        }
-       #endif
-
-        static constexpr auto oldFn = applyDeviceOrientation;
-    };
-
     using InternalOpenCameraResultCallback = std::function<void (const String& /*cameraId*/, const String& /*error*/)>;
 
     Pimpl (CameraDevice& ownerToUse, const String& cameraIdToUse, int /*index*/,
@@ -194,20 +138,27 @@ struct CameraDevice::Pimpl
 private:
     static NSArray<AVCaptureDevice*>* getDevices()
     {
-        std::unique_ptr<NSMutableArray<AVCaptureDeviceType>, NSObjectDeleter> deviceTypes ([[NSMutableArray alloc] initWithCapacity: 2]);
+        if (@available (iOS 10.0, *))
+        {
+            std::unique_ptr<NSMutableArray<AVCaptureDeviceType>, NSObjectDeleter> deviceTypes ([[NSMutableArray alloc] initWithCapacity: 2]);
 
-        [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInWideAngleCamera];
-        [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInTelephotoCamera];
+            [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInWideAngleCamera];
+            [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInTelephotoCamera];
 
-        [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInDualCamera];
+            if (@available (iOS 10.2, *))
+                [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInDualCamera];
 
-        [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInTrueDepthCamera];
+            if (@available (iOS 11.1, *))
+                [deviceTypes.get() addObject: AVCaptureDeviceTypeBuiltInTrueDepthCamera];
 
-        auto discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes: deviceTypes.get()
-                                                                                       mediaType: AVMediaTypeVideo
-                                                                                        position: AVCaptureDevicePositionUnspecified];
+            auto discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes: deviceTypes.get()
+                                                                                           mediaType: AVMediaTypeVideo
+                                                                                            position: AVCaptureDevicePositionUnspecified];
 
-        return [discoverySession devices];
+            return [discoverySession devices];
+        }
+
+        return [AVCaptureDevice devicesWithMediaType: AVMediaTypeVideo];
     }
 
     //==============================================================================
@@ -251,12 +202,18 @@ private:
         JUCE_CAMERA_LOG ("Supports custom exposure: " + String ((int)[device isExposureModeSupported: AVCaptureExposureModeCustom]));
         JUCE_CAMERA_LOG ("Supports point of interest exposure: " + String ((int)device.exposurePointOfInterestSupported));
 
-        JUCE_CAMERA_LOG ("Device type: " + nsStringToJuce (device.deviceType));
-        JUCE_CAMERA_LOG ("Locking focus with custom lens position supported: " + String ((int)device.lockingFocusWithCustomLensPositionSupported));
+        if (@available (iOS 10.0, *))
+        {
+            JUCE_CAMERA_LOG ("Device type: " + nsStringToJuce (device.deviceType));
+            JUCE_CAMERA_LOG ("Locking focus with custom lens position supported: " + String ((int)device.lockingFocusWithCustomLensPositionSupported));
+        }
 
-        JUCE_CAMERA_LOG ("Min available video zoom factor: " + String (device.minAvailableVideoZoomFactor));
-        JUCE_CAMERA_LOG ("Max available video zoom factor: " + String (device.maxAvailableVideoZoomFactor));
-        JUCE_CAMERA_LOG ("Dual camera switch over video zoom factor: " + String (device.dualCameraSwitchOverVideoZoomFactor));
+        if (@available (iOS 11.0, *))
+        {
+            JUCE_CAMERA_LOG ("Min available video zoom factor: " + String (device.minAvailableVideoZoomFactor));
+            JUCE_CAMERA_LOG ("Max available video zoom factor: " + String (device.maxAvailableVideoZoomFactor));
+            JUCE_CAMERA_LOG ("Dual camera switch over video zoom factor: " + String (device.dualCameraSwitchOverVideoZoomFactor));
+        }
 
         JUCE_CAMERA_LOG ("Capture formats start-------------------");
         for (AVCaptureDeviceFormat* format in device.formats)
@@ -272,19 +229,22 @@ private:
     {
         JUCE_CAMERA_LOG ("Media type: " + nsStringToJuce (format.mediaType));
 
-        String colourSpaces;
-
-        for (NSNumber* number in format.supportedColorSpaces)
+        if (@available (iOS 10.0, *))
         {
-            switch ([number intValue])
-            {
-                case AVCaptureColorSpace_sRGB:   colourSpaces << "sRGB ";  break;
-                case AVCaptureColorSpace_P3_D65: colourSpaces << "P3_D65 "; break;
-                default: break;
-            }
-        }
+            String colourSpaces;
 
-        JUCE_CAMERA_LOG ("Supported colour spaces: " + colourSpaces);
+            for (NSNumber* number in format.supportedColorSpaces)
+            {
+                switch ([number intValue])
+                {
+                    case AVCaptureColorSpace_sRGB:   colourSpaces << "sRGB ";  break;
+                    case AVCaptureColorSpace_P3_D65: colourSpaces << "P3_D65 "; break;
+                    default: break;
+                }
+            }
+
+            JUCE_CAMERA_LOG ("Supported colour spaces: " + colourSpaces);
+        }
 
         JUCE_CAMERA_LOG ("Video field of view: " + String (format.videoFieldOfView));
         JUCE_CAMERA_LOG ("Video max zoom factor: " + String (format.videoMaxZoomFactor));
@@ -314,12 +274,15 @@ private:
         }
         JUCE_CAMERA_LOG ("Auto focus system: " + autoFocusSystemString);
 
-        JUCE_CAMERA_LOG ("Standard video stabilization supported: " + String ((int) [format isVideoStabilizationModeSupported: AVCaptureVideoStabilizationModeStandard]));
+        JUCE_CAMERA_LOG ("Standard (iOS 5.0) video stabilization supported: " + String ((int) [format isVideoStabilizationModeSupported: AVCaptureVideoStabilizationModeStandard]));
         JUCE_CAMERA_LOG ("Cinematic video stabilization supported: " + String ((int) [format isVideoStabilizationModeSupported: AVCaptureVideoStabilizationModeCinematic]));
         JUCE_CAMERA_LOG ("Auto video stabilization supported: " + String ((int) [format isVideoStabilizationModeSupported: AVCaptureVideoStabilizationModeAuto]));
 
-        JUCE_CAMERA_LOG ("Min zoom factor for depth data delivery: " + String (format.videoMinZoomFactorForDepthDataDelivery));
-        JUCE_CAMERA_LOG ("Max zoom factor for depth data delivery: " + String (format.videoMaxZoomFactorForDepthDataDelivery));
+        if (@available (iOS 11.0, *))
+        {
+            JUCE_CAMERA_LOG ("Min zoom factor for depth data delivery: " + String (format.videoMinZoomFactorForDepthDataDelivery));
+            JUCE_CAMERA_LOG ("Max zoom factor for depth data delivery: " + String (format.videoMaxZoomFactorForDepthDataDelivery));
+        }
     }
 
     static String getHighResStillImgDimensionsString (CMVideoDimensions d)
@@ -472,9 +435,6 @@ private:
             }
 
             previewLayer = [AVCaptureVideoPreviewLayer layerWithSession: captureSession.get()];
-
-            updatePreviewOrientation();
-
             return previewLayer;
         }
 
@@ -487,7 +447,7 @@ private:
                 return;
             }
 
-            stillPictureTaker.takePicture();
+            stillPictureTaker.takePicture (previewLayer.connection.videoOrientation);
         }
 
         void startRecording (const File& file)
@@ -507,7 +467,7 @@ private:
                 return;
             }
 
-            videoRecorder.startRecording (file);
+            videoRecorder.startRecording (file, previewLayer.connection.videoOrientation);
         }
 
         void stopRecording()
@@ -518,21 +478,6 @@ private:
         Time getTimeOfFirstRecordedFrame() const
         {
             return videoRecorder.getTimeOfFirstRecordedFrame();
-        }
-
-        AVCaptureDevice* getDevice() const
-        {
-            return cameraDevice;
-        }
-
-        AVCaptureVideoPreviewLayer* getPreviewLayer() const
-        {
-            return previewLayer;
-        }
-
-        void updatePreviewOrientation()
-        {
-            ifelse_17_0<PreviewLayerAngleTrait> (cameraDevice, previewLayer, previewLayer.connection);
         }
 
         JUCE_DECLARE_WEAK_REFERENCEABLE (CaptureSession)
@@ -563,48 +508,11 @@ private:
             SessionDelegateClass()  : ObjCClass<NSObject> ("SessionDelegateClass_")
             {
                 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wundeclared-selector")
-                addMethod (@selector (sessionDidStartRunning:),
-                           [] (id self, SEL, [[maybe_unused]] NSNotification* notification)
-                           {
-                               JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
-
-                               dispatch_async (dispatch_get_main_queue(),
-                                               ^{
-                                                   getOwner (self).cameraSessionStarted();
-                                               });
-                           });
-
-                addMethod (@selector (sessionDidStopRunning:),
-                           [] (id, SEL, [[maybe_unused]] NSNotification* notification)
-                           {
-                               JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
-                           });
-
-                addMethod (@selector (runtimeError:),
-                           [] (id self, SEL, NSNotification* notification)
-                           {
-                               JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
-
-                               dispatch_async (dispatch_get_main_queue(),
-                                               ^{
-                                                   NSError* error = notification.userInfo[AVCaptureSessionErrorKey];
-                                                   auto errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
-                                                   getOwner (self).cameraSessionRuntimeError (errorString);
-                                               });
-                           });
-
-                addMethod (@selector (sessionWasInterrupted:),
-                           [] (id, SEL, [[maybe_unused]] NSNotification* notification)
-                           {
-                               JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
-                           });
-
-                addMethod (@selector (sessionInterruptionEnded:),
-                           [] (id, SEL, [[maybe_unused]] NSNotification* notification)
-                           {
-                               JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
-                           });
-
+                addMethod (@selector (sessionDidStartRunning:),   started);
+                addMethod (@selector (sessionDidStopRunning:),    stopped);
+                addMethod (@selector (runtimeError:),             runtimeError);
+                addMethod (@selector (sessionWasInterrupted:),    interrupted);
+                addMethod (@selector (sessionInterruptionEnded:), interruptionEnded);
                 JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 
                 addIvar<CaptureSession*> ("owner");
@@ -615,25 +523,67 @@ private:
             //==============================================================================
             static CaptureSession& getOwner (id self)         { return *getIvar<CaptureSession*> (self, "owner"); }
             static void setOwner (id self, CaptureSession* s) { object_setInstanceVariable (self, "owner", s); }
+
+        private:
+            //==============================================================================
+            static void started (id self, SEL, [[maybe_unused]] NSNotification* notification)
+            {
+                JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
+
+                dispatch_async (dispatch_get_main_queue(),
+                                ^{
+                                    getOwner (self).cameraSessionStarted();
+                                });
+            }
+
+            static void stopped (id, SEL, [[maybe_unused]] NSNotification* notification)
+            {
+                JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
+            }
+
+            static void runtimeError (id self, SEL, NSNotification* notification)
+            {
+                JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
+
+                dispatch_async (dispatch_get_main_queue(),
+                                ^{
+                                    NSError* error = notification.userInfo[AVCaptureSessionErrorKey];
+                                    auto errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
+                                    getOwner (self).cameraSessionRuntimeError (errorString);
+                                });
+            }
+
+            static void interrupted (id, SEL, [[maybe_unused]] NSNotification* notification)
+            {
+                JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
+            }
+
+            static void interruptionEnded (id, SEL, [[maybe_unused]] NSNotification* notification)
+            {
+                JUCE_CAMERA_LOG (nsStringToJuce ([notification description]));
+            }
         };
 
         //==============================================================================
         class StillPictureTaker
         {
         public:
-            explicit StillPictureTaker (CaptureSession& cs)
+            StillPictureTaker (CaptureSession& cs)
                 : captureSession (cs),
                   captureOutput (createCaptureOutput()),
                   photoOutputDelegate (nullptr)
             {
-                static PhotoOutputDelegateClass cls;
-                photoOutputDelegate.reset ([cls.createInstance() init]);
-                PhotoOutputDelegateClass::setOwner (photoOutputDelegate.get(), this);
+                if (@available (iOS 10.0, *))
+                {
+                    static PhotoOutputDelegateClass cls;
+                    photoOutputDelegate.reset ([cls.createInstance() init]);
+                    PhotoOutputDelegateClass::setOwner (photoOutputDelegate.get(), this);
+                }
 
                 captureSession.addOutputIfPossible (captureOutput);
             }
 
-            void takePicture()
+            void takePicture (AVCaptureVideoOrientation orientationToUse)
             {
                 if (takingPicture)
                 {
@@ -646,15 +596,47 @@ private:
 
                 printImageOutputDebugInfo (captureOutput);
 
-                if (findVideoConnection (captureOutput) != nullptr)
+                if (auto* connection = findVideoConnection (captureOutput))
                 {
-                    auto* photoOutput = (AVCapturePhotoOutput*) captureOutput;
-                    auto outputConnection = [photoOutput connectionWithMediaType: AVMediaTypeVideo];
+                    if (@available (iOS 10.0, *))
+                    {
+                        if ([captureOutput isKindOfClass: [AVCapturePhotoOutput class]])
+                        {
+                            auto* photoOutput = (AVCapturePhotoOutput*) captureOutput;
+                            auto outputConnection = [photoOutput connectionWithMediaType: AVMediaTypeVideo];
+                            outputConnection.videoOrientation = orientationToUse;
 
-                    ifelse_17_0<CaptureLayerAngleTrait> (captureSession.cameraDevice, captureSession.previewLayer, outputConnection);
+                            [photoOutput capturePhotoWithSettings: [AVCapturePhotoSettings photoSettings]
+                                                         delegate: id<AVCapturePhotoCaptureDelegate> (photoOutputDelegate.get())];
 
-                    [photoOutput capturePhotoWithSettings: [AVCapturePhotoSettings photoSettings]
-                                                 delegate: id<AVCapturePhotoCaptureDelegate> (photoOutputDelegate.get())];
+                            return;
+                        }
+                    }
+
+                    auto* stillImageOutput = (AVCaptureStillImageOutput*) captureOutput;
+                    auto outputConnection = [stillImageOutput connectionWithMediaType: AVMediaTypeVideo];
+                    outputConnection.videoOrientation = orientationToUse;
+
+                    [stillImageOutput captureStillImageAsynchronouslyFromConnection: connection completionHandler:
+                         ^(CMSampleBufferRef imageSampleBuffer, NSError* error)
+                         {
+                             takingPicture = false;
+
+                             if (error != nil)
+                             {
+                                 JUCE_CAMERA_LOG ("Still picture capture failed, error: " + nsStringToJuce (error.localizedDescription));
+                                 jassertfalse;
+                                 return;
+                             }
+
+                             NSData* imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation: imageSampleBuffer];
+
+                             auto image = ImageFileFormat::loadFrom (imageData.bytes, (size_t) imageData.length);
+
+                             callListeners (image);
+
+                             MessageManager::callAsync ([this, image] { notifyPictureTaken (image); });
+                         }];
                 }
                 else
                 {
@@ -666,52 +648,80 @@ private:
         private:
             static AVCaptureOutput* createCaptureOutput()
             {
-                return [AVCapturePhotoOutput new];
+                if (@available (iOS 10.0, *))
+                    return [AVCapturePhotoOutput new];
+
+                return [AVCaptureStillImageOutput new];
             }
 
             static void printImageOutputDebugInfo (AVCaptureOutput* captureOutput)
             {
-                auto* photoOutput = (AVCapturePhotoOutput*) captureOutput;
+                if (@available (iOS 10.0, *))
+                {
+                    if ([captureOutput isKindOfClass: [AVCapturePhotoOutput class]])
+                    {
+                        auto* photoOutput = (AVCapturePhotoOutput*) captureOutput;
+
+                        String typesString;
+
+                        for (id type in photoOutput.availablePhotoCodecTypes)
+                            typesString << nsStringToJuce (type) << " ";
+
+                        JUCE_CAMERA_LOG ("Available image codec types: " + typesString);
+
+                        JUCE_CAMERA_LOG ("Still image stabilization supported: " + String ((int) photoOutput.stillImageStabilizationSupported));
+                        JUCE_CAMERA_LOG ("Dual camera fusion supported: " + String ((int) photoOutput.dualCameraFusionSupported));
+                        JUCE_CAMERA_LOG ("Supports flash: "      + String ((int) [photoOutput.supportedFlashModes containsObject: @(AVCaptureFlashModeOn)]));
+                        JUCE_CAMERA_LOG ("Supports auto flash: " + String ((int) [photoOutput.supportedFlashModes containsObject: @(AVCaptureFlashModeAuto)]));
+                        JUCE_CAMERA_LOG ("Max bracketed photo count: " + String (photoOutput.maxBracketedCapturePhotoCount));
+                        JUCE_CAMERA_LOG ("Lens stabilization during bracketed capture supported: " + String ((int) photoOutput.lensStabilizationDuringBracketedCaptureSupported));
+                        JUCE_CAMERA_LOG ("Live photo capture supported: " + String ((int) photoOutput.livePhotoCaptureSupported));
+
+
+                        if (@available (iOS 11.0, *))
+                        {
+                            typesString.clear();
+
+                            for (AVFileType type in photoOutput.availablePhotoFileTypes)
+                                typesString << nsStringToJuce (type) << " ";
+
+                            JUCE_CAMERA_LOG ("Available photo file types: " + typesString);
+
+                            typesString.clear();
+
+                            for (AVFileType type in photoOutput.availableRawPhotoFileTypes)
+                                typesString << nsStringToJuce (type) << " ";
+
+                            JUCE_CAMERA_LOG ("Available RAW photo file types: " + typesString);
+
+                            typesString.clear();
+
+                            for (AVFileType type in photoOutput.availableLivePhotoVideoCodecTypes)
+                                typesString << nsStringToJuce (type) << " ";
+
+                            JUCE_CAMERA_LOG ("Available live photo video codec types: " + typesString);
+
+                            JUCE_CAMERA_LOG ("Dual camera dual photo delivery supported: " + String ((int) photoOutput.dualCameraDualPhotoDeliverySupported));
+                            JUCE_CAMERA_LOG ("Camera calibration data delivery supported: " + String ((int) photoOutput.cameraCalibrationDataDeliverySupported));
+                            JUCE_CAMERA_LOG ("Depth data delivery supported: " + String ((int) photoOutput.depthDataDeliverySupported));
+                        }
+
+                        return;
+                    }
+                }
+
+                auto* stillImageOutput = (AVCaptureStillImageOutput*) captureOutput;
 
                 String typesString;
 
-                for (id type in photoOutput.availablePhotoCodecTypes)
+                for (id type in stillImageOutput.availableImageDataCodecTypes)
                     typesString << nsStringToJuce (type) << " ";
 
                 JUCE_CAMERA_LOG ("Available image codec types: " + typesString);
+                JUCE_CAMERA_LOG ("Still image stabilization supported: " + String ((int) stillImageOutput.stillImageStabilizationSupported));
+                JUCE_CAMERA_LOG ("Automatically enables still image stabilization when available: " + String ((int) stillImageOutput.automaticallyEnablesStillImageStabilizationWhenAvailable));
 
-                JUCE_CAMERA_LOG ("Still image stabilization supported: " + String ((int) photoOutput.stillImageStabilizationSupported));
-                JUCE_CAMERA_LOG ("Dual camera fusion supported: " + String ((int) photoOutput.dualCameraFusionSupported));
-                JUCE_CAMERA_LOG ("Supports flash: "      + String ((int) [photoOutput.supportedFlashModes containsObject: @(AVCaptureFlashModeOn)]));
-                JUCE_CAMERA_LOG ("Supports auto flash: " + String ((int) [photoOutput.supportedFlashModes containsObject: @(AVCaptureFlashModeAuto)]));
-                JUCE_CAMERA_LOG ("Max bracketed photo count: " + String (photoOutput.maxBracketedCapturePhotoCount));
-                JUCE_CAMERA_LOG ("Lens stabilization during bracketed capture supported: " + String ((int) photoOutput.lensStabilizationDuringBracketedCaptureSupported));
-                JUCE_CAMERA_LOG ("Live photo capture supported: " + String ((int) photoOutput.livePhotoCaptureSupported));
-
-                typesString.clear();
-
-                for (AVFileType type in photoOutput.availablePhotoFileTypes)
-                    typesString << nsStringToJuce (type) << " ";
-
-                JUCE_CAMERA_LOG ("Available photo file types: " + typesString);
-
-                typesString.clear();
-
-                for (AVFileType type in photoOutput.availableRawPhotoFileTypes)
-                    typesString << nsStringToJuce (type) << " ";
-
-                JUCE_CAMERA_LOG ("Available RAW photo file types: " + typesString);
-
-                typesString.clear();
-
-                for (AVFileType type in photoOutput.availableLivePhotoVideoCodecTypes)
-                    typesString << nsStringToJuce (type) << " ";
-
-                JUCE_CAMERA_LOG ("Available live photo video codec types: " + typesString);
-
-                JUCE_CAMERA_LOG ("Dual camera dual photo delivery supported: " + String ((int) photoOutput.dualCameraDualPhotoDeliverySupported));
-                JUCE_CAMERA_LOG ("Camera calibration data delivery supported: " + String ((int) photoOutput.cameraCalibrationDataDeliverySupported));
-                JUCE_CAMERA_LOG ("Depth data delivery supported: " + String ((int) photoOutput.depthDataDeliverySupported));
+                JUCE_CAMERA_LOG ("Output settings for image output: " + nsStringToJuce ([stillImageOutput.outputSettings description]));
             }
 
             //==============================================================================
@@ -726,66 +736,24 @@ private:
             }
 
             //==============================================================================
-            class PhotoOutputDelegateClass : public ObjCClass<NSObject>
+            class API_AVAILABLE (ios (10.0)) PhotoOutputDelegateClass : public ObjCClass<NSObject>
             {
             public:
                 PhotoOutputDelegateClass() : ObjCClass<NSObject> ("PhotoOutputDelegateClass_")
                 {
-                    addMethod (@selector (captureOutput:willBeginCaptureForResolvedSettings:),
-                               [] (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
-                               {
-                                   JUCE_CAMERA_LOG ("willBeginCaptureForSettings()");
-                               });
+                    addMethod (@selector (captureOutput:willBeginCaptureForResolvedSettings:),       willBeginCaptureForSettings);
+                    addMethod (@selector (captureOutput:willCapturePhotoForResolvedSettings:),       willCaptureForSettings);
+                    addMethod (@selector (captureOutput:didCapturePhotoForResolvedSettings:),        didCaptureForSettings);
+                    addMethod (@selector (captureOutput:didFinishCaptureForResolvedSettings:error:), didFinishCaptureForSettings);
 
-                    addMethod (@selector (captureOutput:willCapturePhotoForResolvedSettings:),
-                               [] (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
-                               {
-                                   JUCE_CAMERA_LOG ("willCaptureForSettings()");
-                               });
-
-                    addMethod (@selector (captureOutput:didCapturePhotoForResolvedSettings:),
-                               [] (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
-                               {
-                                   JUCE_CAMERA_LOG ("didCaptureForSettings()");
-                               });
-
-                    addMethod (@selector (captureOutput:didFinishCaptureForResolvedSettings:error:),
-                               [] (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*, NSError* error)
-                               {
-                                   [[maybe_unused]] String errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
-
-                                   JUCE_CAMERA_LOG ("didFinishCaptureForSettings(), error = " + errorString);
-                               });
-
-                    addMethod (@selector (captureOutput:didFinishProcessingPhoto:error:),
-                               [] (id self, SEL, AVCapturePhotoOutput*, AVCapturePhoto* capturePhoto, NSError* error)
-                               {
-                                   getOwner (self).takingPicture = false;
-
-                                   [[maybe_unused]] String errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
-
-                                   JUCE_CAMERA_LOG ("didFinishProcessingPhoto(), error = " + errorString);
-
-                                   if (error != nil)
-                                   {
-                                       JUCE_CAMERA_LOG ("Still picture capture failed, error: " + nsStringToJuce (error.localizedDescription));
-                                       jassertfalse;
-                                       return;
-                                   }
-
-                                   auto* imageOrientation = (NSNumber *) capturePhoto.metadata[(NSString*) kCGImagePropertyOrientation];
-
-                                   auto* uiImage = getImageWithCorrectOrientation ((CGImagePropertyOrientation) imageOrientation.unsignedIntValue,
-                                   [capturePhoto CGImageRepresentation]);
-
-                                   auto* imageData = UIImageJPEGRepresentation (uiImage, 0.f);
-
-                                   auto image = ImageFileFormat::loadFrom (imageData.bytes, (size_t) imageData.length);
-
-                                   getOwner (self).callListeners (image);
-
-                                   MessageManager::callAsync ([self, image]() { getOwner (self).notifyPictureTaken (image); });
-                               });
+                    if (@available (iOS 11.0, *))
+                    {
+                        addMethod (@selector (captureOutput:didFinishProcessingPhoto:error:), didFinishProcessingPhoto);
+                    }
+                    else
+                    {
+                        addMethod (@selector (captureOutput:didFinishProcessingPhotoSampleBuffer:previewPhotoSampleBuffer:resolvedSettings:bracketSettings:error:), didFinishProcessingPhotoSampleBuffer);
+                    }
 
                     addIvar<StillPictureTaker*> ("owner");
 
@@ -797,6 +765,58 @@ private:
                 static void setOwner (id self, StillPictureTaker* t) { object_setInstanceVariable (self, "owner", t); }
 
             private:
+                static void willBeginCaptureForSettings (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
+                {
+                    JUCE_CAMERA_LOG ("willBeginCaptureForSettings()");
+                }
+
+                static void willCaptureForSettings (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
+                {
+                    JUCE_CAMERA_LOG ("willCaptureForSettings()");
+                }
+
+                static void didCaptureForSettings (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
+                {
+                    JUCE_CAMERA_LOG ("didCaptureForSettings()");
+                }
+
+                static void didFinishCaptureForSettings (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*, NSError* error)
+                {
+                    [[maybe_unused]] String errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
+
+                    JUCE_CAMERA_LOG ("didFinishCaptureForSettings(), error = " + errorString);
+                }
+
+                API_AVAILABLE (ios (11.0))
+                static void didFinishProcessingPhoto (id self, SEL, AVCapturePhotoOutput*, AVCapturePhoto* capturePhoto, NSError* error)
+                {
+                    getOwner (self).takingPicture = false;
+
+                    [[maybe_unused]] String errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
+
+                    JUCE_CAMERA_LOG ("didFinishProcessingPhoto(), error = " + errorString);
+
+                    if (error != nil)
+                    {
+                        JUCE_CAMERA_LOG ("Still picture capture failed, error: " + nsStringToJuce (error.localizedDescription));
+                        jassertfalse;
+                        return;
+                    }
+
+                    auto* imageOrientation = (NSNumber *) capturePhoto.metadata[(NSString*) kCGImagePropertyOrientation];
+
+                    auto* uiImage = getImageWithCorrectOrientation ((CGImagePropertyOrientation) imageOrientation.unsignedIntValue,
+                                                                    [capturePhoto CGImageRepresentation]);
+
+                    auto* imageData = UIImageJPEGRepresentation (uiImage, 0.f);
+
+                    auto image = ImageFileFormat::loadFrom (imageData.bytes, (size_t) imageData.length);
+
+                    getOwner (self).callListeners (image);
+
+                    MessageManager::callAsync ([self, image]() { getOwner (self).notifyPictureTaken (image); });
+                }
+
                 static UIImage* getImageWithCorrectOrientation (CGImagePropertyOrientation imageOrientation,
                                                                 CGImageRef imageData)
                 {
@@ -869,6 +889,39 @@ private:
                     return CGSizeMake ((CGFloat) width, (CGFloat) height);
                 }
 
+                static void didFinishProcessingPhotoSampleBuffer (id self, SEL, AVCapturePhotoOutput*,
+                                                                  CMSampleBufferRef imageBuffer, CMSampleBufferRef imagePreviewBuffer,
+                                                                  AVCaptureResolvedPhotoSettings*, AVCaptureBracketedStillImageSettings*,
+                                                                  NSError* error)
+                {
+                    getOwner (self).takingPicture = false;
+
+                    [[maybe_unused]] String errorString = error != nil ? nsStringToJuce (error.localizedDescription) : String();
+
+                    JUCE_CAMERA_LOG ("didFinishProcessingPhotoSampleBuffer(), error = " + errorString);
+
+                    if (error != nil)
+                    {
+                        JUCE_CAMERA_LOG ("Still picture capture failed, error: " + nsStringToJuce (error.localizedDescription));
+                        jassertfalse;
+                        return;
+                    }
+
+                    NSData* origImageData = [AVCapturePhotoOutput JPEGPhotoDataRepresentationForJPEGSampleBuffer: imageBuffer previewPhotoSampleBuffer: imagePreviewBuffer];
+                    auto origImage = [UIImage imageWithData: origImageData];
+                    auto imageOrientation = uiImageOrientationToCGImageOrientation (origImage.imageOrientation);
+
+                    auto* uiImage = getImageWithCorrectOrientation (imageOrientation, origImage.CGImage);
+
+                    auto* imageData = UIImageJPEGRepresentation (uiImage, 0.f);
+
+                    auto image = ImageFileFormat::loadFrom (imageData.bytes, (size_t) imageData.length);
+
+                    getOwner (self).callListeners (image);
+
+                    MessageManager::callAsync ([self, image]() { getOwner (self).notifyPictureTaken (image); });
+                }
+
                 static CGImagePropertyOrientation uiImageOrientationToCGImageOrientation (UIImageOrientation orientation)
                 {
                     switch (orientation)
@@ -912,9 +965,8 @@ private:
         class VideoRecorder
         {
         public:
-            explicit VideoRecorder (CaptureSession& session)
-                : captureSession (session),
-                  movieFileOutput ([AVCaptureMovieFileOutput new]),
+            VideoRecorder (CaptureSession& session)
+                : movieFileOutput ([AVCaptureMovieFileOutput new]),
                   delegate (nullptr)
             {
                 static FileOutputRecordingDelegateClass cls;
@@ -933,15 +985,16 @@ private:
                 jassert (! recordingInProgress);
             }
 
-            void startRecording (const File& file)
+            void startRecording (const File& file, AVCaptureVideoOrientation orientationToUse)
             {
-                printVideoOutputDebugInfo (movieFileOutput);
+                if (@available (iOS 10.0, *))
+                    printVideoOutputDebugInfo (movieFileOutput);
 
                 auto url = [NSURL fileURLWithPath: juceStringToNS (file.getFullPathName())
                                       isDirectory: NO];
 
                 auto outputConnection = [movieFileOutput connectionWithMediaType: AVMediaTypeVideo];
-                ifelse_17_0<CaptureLayerAngleTrait> (captureSession.cameraDevice, captureSession.previewLayer, outputConnection);
+                outputConnection.videoOrientation = orientationToUse;
 
                 [movieFileOutput startRecordingToOutputFileURL: url recordingDelegate: delegate.get()];
             }
@@ -979,36 +1032,8 @@ private:
             {
                 FileOutputRecordingDelegateClass()  : ObjCClass<NSObject<AVCaptureFileOutputRecordingDelegate>> ("FileOutputRecordingDelegateClass_")
                 {
-                    addMethod (@selector (captureOutput:didStartRecordingToOutputFileAtURL:fromConnections:),
-                               [] (id self, SEL, AVCaptureFileOutput*, NSURL*, NSArray<AVCaptureConnection*>*)
-                               {
-                                   JUCE_CAMERA_LOG ("Started recording");
-
-                                   getOwner (self).firstRecordedFrameTimeMs.set (Time::getCurrentTime().toMilliseconds());
-                                   getOwner (self).recordingInProgress = true;
-                               });
-
-                    addMethod (@selector (captureOutput:didFinishRecordingToOutputFileAtURL:fromConnections:error:),
-                               [] (id self, SEL, AVCaptureFileOutput*, NSURL*, NSArray<AVCaptureConnection*>*, NSError* error)
-                               {
-                                   String errorString;
-                                   bool recordingPlayable = true;
-
-                                   // There might have been an error in the recording, yet there may be a playable file...
-                                   if ([error code] != noErr)
-                                   {
-                                       id value = [[error userInfo] objectForKey: AVErrorRecordingSuccessfullyFinishedKey];
-
-                                       if (value != nil && ! [value boolValue])
-                                       recordingPlayable = false;
-
-                                       errorString = nsStringToJuce (error.localizedDescription) + ", playable: " + String ((int) recordingPlayable);
-                                   }
-
-                                   JUCE_CAMERA_LOG ("Stopped recording, error = " + errorString);
-
-                                   getOwner (self).recordingInProgress = false;
-                               });
+                    addMethod (@selector (captureOutput:didStartRecordingToOutputFileAtURL:fromConnections:),        started);
+                    addMethod (@selector (captureOutput:didFinishRecordingToOutputFileAtURL:fromConnections:error:), stopped);
 
                     addIvar<VideoRecorder*> ("owner");
 
@@ -1018,9 +1043,38 @@ private:
                 //==============================================================================
                 static VideoRecorder& getOwner (id self)         { return *getIvar<VideoRecorder*> (self, "owner"); }
                 static void setOwner (id self, VideoRecorder* r) { object_setInstanceVariable (self, "owner", r); }
+
+            private:
+                static void started (id self, SEL, AVCaptureFileOutput*, NSURL*, NSArray<AVCaptureConnection*>*)
+                {
+                    JUCE_CAMERA_LOG ("Started recording");
+
+                    getOwner (self).firstRecordedFrameTimeMs.set (Time::getCurrentTime().toMilliseconds());
+                    getOwner (self).recordingInProgress = true;
+                }
+
+                static void stopped (id self, SEL, AVCaptureFileOutput*, NSURL*, NSArray<AVCaptureConnection*>*, NSError* error)
+                {
+                    String errorString;
+                    bool recordingPlayable = true;
+
+                    // There might have been an error in the recording, yet there may be a playable file...
+                    if ([error code] != noErr)
+                    {
+                        id value = [[error userInfo] objectForKey: AVErrorRecordingSuccessfullyFinishedKey];
+
+                        if (value != nil && ! [value boolValue])
+                            recordingPlayable = false;
+
+                        errorString = nsStringToJuce (error.localizedDescription) + ", playable: " + String ((int) recordingPlayable);
+                    }
+
+                    JUCE_CAMERA_LOG ("Stopped recording, error = " + errorString);
+
+                    getOwner (self).recordingInProgress = false;
+                }
             };
 
-            CaptureSession& captureSession;
             AVCaptureMovieFileOutput* movieFileOutput;
             std::unique_ptr<NSObject<AVCaptureFileOutputRecordingDelegate>, NSObjectDeleter> delegate;
             bool recordingInProgress = false;
@@ -1156,39 +1210,26 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
     //==============================================================================
     struct JuceCameraDeviceViewerClass    : public ObjCClass<UIView>
     {
-        JuceCameraDeviceViewerClass()  : ObjCClass ("JuceCameraDeviceViewerClass_")
+        JuceCameraDeviceViewerClass()  : ObjCClass<UIView> ("JuceCameraDeviceViewerClass_")
         {
-            addMethod (@selector (layoutSubviews),
-                       [] (id self, SEL)
-                       {
-                           sendSuperclassMessage<void> (self, @selector (layoutSubviews));
-
-                           UIView* asUIView = (UIView*) self;
-
-                           updateOrientation (self);
-
-                           if (auto* previewLayer = getPreviewLayer (self))
-                               previewLayer.frame = asUIView.bounds;
-                       });
-
-            addMethod (@selector (observeValueForKeyPath:ofObject:change:context:),
-                       [] (id self, SEL, NSString* keyPath, id, NSDictionary*, void* context)
-                       {
-                           if ([keyPath isEqualToString: @"videoRotationAngleForHorizonLevelPreview"])
-                           {
-                               if (getPreviewLayer (self) != nullptr)
-                               {
-                                   auto* viewer = static_cast<ViewerComponent*> (context);
-                                   auto& session = viewer->cameraDevice.pimpl->captureSession;
-                                   session.updatePreviewOrientation();
-                               }
-                           }
-                       });
+            addMethod (@selector (layoutSubviews), layoutSubviews);
 
             registerClass();
         }
 
     private:
+        static void layoutSubviews (id self, SEL)
+        {
+            sendSuperclassMessage<void> (self, @selector (layoutSubviews));
+
+            UIView* asUIView = (UIView*) self;
+
+            updateOrientation (self);
+
+            if (auto* previewLayer = getPreviewLayer (self))
+                previewLayer.frame = asUIView.bounds;
+        }
+
         static AVCaptureVideoPreviewLayer* getPreviewLayer (id self)
         {
             UIView* asUIView = (UIView*) self;
@@ -1202,9 +1243,6 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
 
         static void updateOrientation (id self)
         {
-            if (@available (ios 17, *))
-                return;
-
             if (auto* previewLayer = getPreviewLayer (self))
             {
                 UIDeviceOrientation o = [UIDevice currentDevice].orientation;
@@ -1212,52 +1250,13 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
                 if (UIDeviceOrientationIsPortrait (o) || UIDeviceOrientationIsLandscape (o))
                 {
                     if (previewLayer.connection != nil)
-                    {
-                        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
                         previewLayer.connection.videoOrientation = (AVCaptureVideoOrientation) o;
-                        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
-                    }
                 }
             }
         }
     };
 
-    struct AddObserverTrait
-    {
-       #if JUCE_IOS_API_VERSION_CAN_BE_BUILT (17, 0)
-        API_AVAILABLE (ios (17))
-        static void newFn (ViewerComponent* self)
-        {
-            auto& session = self->cameraDevice.pimpl->captureSession;
-            self->coordinator.reset ([[AVCaptureDeviceRotationCoordinator alloc] initWithDevice: session.getDevice()
-                                                                                   previewLayer: session.getPreviewLayer()]);
-            [self->coordinator.get() addObserver: static_cast<UIView*> (self->getView())
-                                      forKeyPath: @"videoRotationAngleForHorizonLevelPreview"
-                                         options: NSKeyValueObservingOptionNew
-                                         context: self];
-        }
-       #endif
-
-        static void oldFn (ViewerComponent*) {}
-    };
-
-    struct RemoveObserverTrait
-    {
-        API_AVAILABLE (ios (17))
-        static void newFn (ViewerComponent* self)
-        {
-            if (self->coordinator != nullptr)
-            {
-                [self->coordinator.get() removeObserver: static_cast<UIView*> (self->getView())
-                                             forKeyPath: @"videoRotationAngleForHorizonLevelPreview"];
-            }
-        }
-
-        static void oldFn (ViewerComponent*) {}
-    };
-
-    explicit ViewerComponent (CameraDevice& device)
-        : cameraDevice (device)
+    ViewerComponent (CameraDevice& device)
     {
         static JuceCameraDeviceViewerClass cls;
 
@@ -1270,19 +1269,15 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
         auto* previewLayer = device.pimpl->captureSession.createPreviewLayer();
         previewLayer.frame = view.bounds;
 
+        UIInterfaceOrientation statusBarOrientation = [UIApplication sharedApplication].statusBarOrientation;
+        AVCaptureVideoOrientation videoOrientation = statusBarOrientation != UIInterfaceOrientationUnknown
+                                                   ? (AVCaptureVideoOrientation) statusBarOrientation
+                                                   : AVCaptureVideoOrientationPortrait;
+
+        previewLayer.connection.videoOrientation = videoOrientation;
+
         [view.layer addSublayer: previewLayer];
-
-        ifelse_17_0<AddObserverTrait> (this);
     }
-
-    ~ViewerComponent() override
-    {
-        ifelse_17_0<RemoveObserverTrait> (this);
-    }
-
-    CameraDevice& cameraDevice;
-
-    NSUniquePtr<NSObject> coordinator;
 };
 
 //==============================================================================
@@ -1290,3 +1285,5 @@ String CameraDevice::getFileExtension()
 {
     return ".mov";
 }
+
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE

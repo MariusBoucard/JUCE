@@ -1,22 +1,18 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework examples.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE examples.
+   Copyright (c) 2022 - Raw Material Software Limited
 
    The code included in this file is provided under the terms of the ISC license
    http://www.isc.org/downloads/software-support-policy/isc-license. Permission
-   to use, copy, modify, and/or distribute this software for any purpose with or
+   To use, copy, modify, and/or distribute this software for any purpose with or
    without fee is hereby granted provided that the above copyright notice and
    this permission notice appear in all copies.
 
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-   REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-   INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-   LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-   OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-   PERFORMANCE OF THIS SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES,
+   WHETHER EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR
+   PURPOSE, ARE DISCLAIMED.
 
   ==============================================================================
 */
@@ -139,47 +135,47 @@ struct SlidersPage final : public Component
         s->setTextValueSuffix (" rels");
 
         sliderArea.removeFromLeft (20);
-        auto horizontalSliderArea = sliderArea.removeFromLeft (180);
+        auto horizonalSliderArea = sliderArea.removeFromLeft (180);
 
         s = createSlider (true);
         s->setSliderStyle (Slider::LinearHorizontal);
         s->setTextBoxStyle (Slider::TextBoxLeft, false, 80, 20);
-        s->setBounds (horizontalSliderArea.removeFromTop (20));
+        s->setBounds (horizonalSliderArea.removeFromTop (20));
 
         s = createSlider (false);
         s->setSliderStyle (Slider::LinearHorizontal);
         s->setTextBoxStyle (Slider::NoTextBox, false, 0, 0);
-        horizontalSliderArea.removeFromTop (20);
-        s->setBounds (horizontalSliderArea.removeFromTop (20));
+        horizonalSliderArea.removeFromTop (20);
+        s->setBounds (horizonalSliderArea.removeFromTop (20));
         s->setPopupDisplayEnabled (true, false, this);
         s->setTextValueSuffix (" nuns required to change a lightbulb");
 
         s = createSlider (false);
         s->setSliderStyle (Slider::LinearHorizontal);
         s->setTextBoxStyle (Slider::TextEntryBoxPosition::TextBoxAbove, false, 70, 20);
-        horizontalSliderArea.removeFromTop (20);
-        s->setBounds (horizontalSliderArea.removeFromTop (50));
+        horizonalSliderArea.removeFromTop (20);
+        s->setBounds (horizonalSliderArea.removeFromTop (50));
         s->setPopupDisplayEnabled (true, false, this);
 
         s = createSlider (false);
         s->setSliderStyle (Slider::IncDecButtons);
         s->setTextBoxStyle (Slider::TextBoxLeft, false, 50, 20);
-        horizontalSliderArea.removeFromTop (20);
-        s->setBounds (horizontalSliderArea.removeFromTop (20));
+        horizonalSliderArea.removeFromTop (20);
+        s->setBounds (horizonalSliderArea.removeFromTop (20));
         s->setIncDecButtonsMode (Slider::incDecButtonsDraggable_Vertical);
 
         s = createSlider (false);
         s->setSliderStyle (Slider::Rotary);
         s->setRotaryParameters (MathConstants<float>::pi * 1.2f, MathConstants<float>::pi * 2.8f, false);
         s->setTextBoxStyle (Slider::TextBoxRight, false, 70, 20);
-        horizontalSliderArea.removeFromTop (15);
-        s->setBounds (horizontalSliderArea.removeFromTop (70));
+        horizonalSliderArea.removeFromTop (15);
+        s->setBounds (horizonalSliderArea.removeFromTop (70));
         s->setTextValueSuffix (" mm");
 
         s = createSlider (false);
         s->setSliderStyle (Slider::LinearBar);
-        horizontalSliderArea.removeFromTop (10);
-        s->setBounds (horizontalSliderArea.removeFromTop (30));
+        horizonalSliderArea.removeFromTop (10);
+        s->setBounds (horizonalSliderArea.removeFromTop (30));
         s->setTextValueSuffix (" gallons");
 
         sliderArea.removeFromLeft (20);
@@ -694,7 +690,7 @@ struct MenuPage final : public Component
     {
         void drawPopupMenuColumnSeparatorWithOptions (Graphics& g,
                                                       const Rectangle<int>& bounds,
-                                                      const PopupMenu::Options& opt) override
+                                                      const PopupMenu::Options& opt)
         {
             if (auto* target = opt.getTargetComponent())
             {
@@ -712,7 +708,7 @@ struct MenuPage final : public Component
             }
         }
 
-        void drawPopupMenuBackgroundWithOptions (Graphics& g, int, int, const PopupMenu::Options& opt) override
+        void drawPopupMenuBackgroundWithOptions (Graphics& g, int, int, const PopupMenu::Options& opt)
         {
             if (auto* target = opt.getTargetComponent())
             {
@@ -721,7 +717,7 @@ struct MenuPage final : public Component
         }
 
         // Return the amount of space that should be left between popup menu columns.
-        int getPopupMenuColumnSeparatorWidthWithOptions (const PopupMenu::Options&) override
+        int getPopupMenuColumnSeparatorWidthWithOptions (const PopupMenu::Options&)
         {
             return 10;
         }
@@ -1117,7 +1113,7 @@ public:
             {
                 auto text = rowElement->getStringAttribute (getAttributeNameForColumnId (columnId));
 
-                widest = jmax (widest, GlyphArrangement::getStringWidthInt (font, text));
+                widest = jmax (widest, font.getStringWidth (text));
             }
         }
 
@@ -1156,7 +1152,7 @@ public:
 
 private:
     TableListBox table;     // the table component itself
-    Font font { FontOptions { 14.0f } };
+    Font font  { 14.0f };
 
     std::unique_ptr<XmlElement> demoData;  // This is the XML document loaded from the embedded file "demo table data.xml"
     XmlElement* columnList = nullptr;     // A pointer to the sub-node of demoData that contains the list of columns
@@ -1515,12 +1511,12 @@ private:
 //==============================================================================
 struct DemoTabbedComponent final : public TabbedComponent
 {
-    DemoTabbedComponent (bool isRunningComponentTransformsDemo)
+    DemoTabbedComponent (bool isRunningComponenTransformsDemo)
         : TabbedComponent (TabbedButtonBar::TabsAtTop)
     {
         auto colour = findColour (ResizableWindow::backgroundColourId);
 
-        addTab ("Buttons",     colour, new ButtonsPage (isRunningComponentTransformsDemo), true);
+        addTab ("Buttons",     colour, new ButtonsPage (isRunningComponenTransformsDemo), true);
         addTab ("Sliders",     colour, new SlidersPage(),                                 true);
         addTab ("Toolbars",    colour, new ToolbarDemoComp(),                             true);
         addTab ("Misc",        colour, new MiscPage(),                                    true);
@@ -1528,7 +1524,7 @@ struct DemoTabbedComponent final : public TabbedComponent
         addTab ("Tables",      colour, new TableDemoComponent(),                          true);
         addTab ("Drag & Drop", colour, new DragAndDropDemo(),                             true);
 
-        getTabbedButtonBar().getTabButton (5)->setExtraComponent (new CustomTabButton (isRunningComponentTransformsDemo),
+        getTabbedButtonBar().getTabButton (5)->setExtraComponent (new CustomTabButton (isRunningComponenTransformsDemo),
                                                                   TabBarButton::afterText);
     }
 
@@ -1537,8 +1533,8 @@ struct DemoTabbedComponent final : public TabbedComponent
     class CustomTabButton final : public Component
     {
     public:
-        CustomTabButton (bool isRunningComponentTransformsDemo)
-            : runningComponentTransformsDemo (isRunningComponentTransformsDemo)
+        CustomTabButton (bool isRunningComponenTransformsDemo)
+            : runningComponenTransformsDemo (isRunningComponenTransformsDemo)
         {
             setSize (20, 20);
         }
@@ -1560,10 +1556,10 @@ struct DemoTabbedComponent final : public TabbedComponent
                                "You can use these to implement things like close-buttons "
                                "or status displays for your tabs.",
                                bubbleMessage,
-                               runningComponentTransformsDemo);
+                               runningComponenTransformsDemo);
         }
     private:
-        bool runningComponentTransformsDemo;
+        bool runningComponenTransformsDemo;
         std::unique_ptr<BubbleMessageComponent> bubbleMessage;
     };
 

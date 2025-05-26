@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -333,9 +324,9 @@ void findCDDevices (Array<CDDeviceDescription>& list)
 
             if (h != INVALID_HANDLE_VALUE)
             {
-                char buffer[100]{};
+                char buffer[100] = { 0 };
 
-                SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER p{};
+                SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER p = { 0 };
                 p.spt.Length             = sizeof (SCSI_PASS_THROUGH);
                 p.spt.CdbLength          = 6;
                 p.spt.SenseInfoLength    = 24;
@@ -357,7 +348,7 @@ void findCDDevices (Array<CDDeviceDescription>& list)
                     dev.scsiDriveLetter = driveLetter;
                     dev.createDescription (buffer);
 
-                    SCSI_ADDRESS scsiAddr{};
+                    SCSI_ADDRESS scsiAddr = { 0 };
                     scsiAddr.Length = sizeof (scsiAddr);
 
                     if (DeviceIoControl (h, IOCTL_SCSI_GET_ADDRESS,
@@ -380,7 +371,7 @@ void findCDDevices (Array<CDDeviceDescription>& list)
 DWORD performScsiPassThroughCommand (SRB_ExecSCSICmd* const srb, const char driveLetter,
                                      HANDLE& deviceHandle, const bool retryOnFailure)
 {
-    SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER s{};
+    SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER s = { 0 };
     s.spt.Length = sizeof (SCSI_PASS_THROUGH);
     s.spt.CdbLength = srb->SRB_CDBLen;
 
@@ -807,7 +798,7 @@ int CDController::getLastIndex()
 //==============================================================================
 bool CDDeviceHandle::readTOC (TOC* lpToc)
 {
-    SRB_ExecSCSICmd s{};
+    SRB_ExecSCSICmd s = { 0 };
     s.SRB_Cmd = SC_EXEC_SCSI_CMD;
     s.SRB_HaID = info.ha;
     s.SRB_Target = info.tgt;
@@ -881,7 +872,7 @@ void CDDeviceHandle::openDrawer (bool shouldBeOpen)
         }
     }
 
-    SRB_ExecSCSICmd s{};
+    SRB_ExecSCSICmd s = { 0 };
     s.SRB_Cmd = SC_EXEC_SCSI_CMD;
     s.SRB_HaID = info.ha;
     s.SRB_Target = info.tgt;
@@ -1143,7 +1134,7 @@ bool AudioCDReader::readSamples (int* const* destSamples, int numDestChannels, i
 bool AudioCDReader::isCDStillPresent() const
 {
     using namespace CDReaderHelpers;
-    TOC toc{};
+    TOC toc = { 0 };
     return static_cast<CDDeviceWrapper*> (handle)->deviceHandle.readTOC (&toc);
 }
 
@@ -1153,7 +1144,7 @@ void AudioCDReader::refreshTrackLengths()
     trackStartSamples.clear();
     zeromem (audioTracks, sizeof (audioTracks));
 
-    TOC toc{};
+    TOC toc = { 0 };
 
     if (static_cast<CDDeviceWrapper*> (handle)->deviceHandle.readTOC (&toc))
     {

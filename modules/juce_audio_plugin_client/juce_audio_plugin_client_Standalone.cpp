@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -70,7 +61,7 @@ public:
     {
         PropertiesFile::Options options;
 
-        options.applicationName     = CharPointer_UTF8 (JucePlugin_Name);
+        options.applicationName     = appName;
         options.filenameSuffix      = ".settings";
         options.osxLibrarySubFolder = "Application Support";
        #if JUCE_LINUX || JUCE_BSD
@@ -82,72 +73,46 @@ public:
         appProperties.setStorageParameters (options);
     }
 
-    const String getApplicationName() override              { return CharPointer_UTF8 (JucePlugin_Name); }
+    const String getApplicationName() override              { return appName; }
     const String getApplicationVersion() override           { return JucePlugin_VersionString; }
     bool moreThanOneInstanceAllowed() override              { return true; }
     void anotherInstanceStarted (const String&) override    {}
 
     virtual StandaloneFilterWindow* createWindow()
     {
-        if (Desktop::getInstance().getDisplays().displays.isEmpty())
-        {
-            // No displays are available, so no window will be created!
-            jassertfalse;
-            return nullptr;
-        }
+       #ifdef JucePlugin_PreferredChannelConfigurations
+        StandalonePluginHolder::PluginInOuts channels[] = { JucePlugin_PreferredChannelConfigurations };
+       #endif
 
         return new StandaloneFilterWindow (getApplicationName(),
                                            LookAndFeel::getDefaultLookAndFeel().findColour (ResizableWindow::backgroundColourId),
-                                           createPluginHolder());
-    }
-
-    virtual std::unique_ptr<StandalonePluginHolder> createPluginHolder()
-    {
-        constexpr auto autoOpenMidiDevices =
-       #if (JUCE_ANDROID || JUCE_IOS) && ! JUCE_DONT_AUTO_OPEN_MIDI_DEVICES_ON_MOBILE
-                true;
-       #else
-                false;
-       #endif
-
-
-       #ifdef JucePlugin_PreferredChannelConfigurations
-        constexpr StandalonePluginHolder::PluginInOuts channels[] { JucePlugin_PreferredChannelConfigurations };
-        const Array<StandalonePluginHolder::PluginInOuts> channelConfig (channels, juce::numElementsInArray (channels));
-       #else
-        const Array<StandalonePluginHolder::PluginInOuts> channelConfig;
-       #endif
-
-        return std::make_unique<StandalonePluginHolder> (appProperties.getUserSettings(),
-                                                         false,
-                                                         String{},
-                                                         nullptr,
-                                                         channelConfig,
-                                                         autoOpenMidiDevices);
+                                           appProperties.getUserSettings(),
+                                           false, {}, nullptr
+                                          #ifdef JucePlugin_PreferredChannelConfigurations
+                                           , juce::Array<StandalonePluginHolder::PluginInOuts> (channels, juce::numElementsInArray (channels))
+                                          #else
+                                           , {}
+                                          #endif
+                                          #if JUCE_DONT_AUTO_OPEN_MIDI_DEVICES_ON_MOBILE
+                                           , false
+                                          #endif
+                                           );
     }
 
     //==============================================================================
     void initialise (const String&) override
     {
-        mainWindow = rawToUniquePtr (createWindow());
+        mainWindow.reset (createWindow());
 
-        if (mainWindow != nullptr)
-        {
-           #if JUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE
-            Desktop::getInstance().setKioskModeComponent (mainWindow.get(), false);
-           #endif
+       #if JUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE
+        Desktop::getInstance().setKioskModeComponent (mainWindow.get(), false);
+       #endif
 
-            mainWindow->setVisible (true);
-        }
-        else
-        {
-            pluginHolder = createPluginHolder();
-        }
+        mainWindow->setVisible (true);
     }
 
     void shutdown() override
     {
-        pluginHolder = nullptr;
         mainWindow = nullptr;
         appProperties.saveIfNeeded();
     }
@@ -155,9 +120,6 @@ public:
     //==============================================================================
     void systemRequestedQuit() override
     {
-        if (pluginHolder != nullptr)
-            pluginHolder->savePluginState();
-
         if (mainWindow != nullptr)
             mainWindow->pluginHolder->savePluginState();
 
@@ -180,7 +142,7 @@ protected:
     std::unique_ptr<StandaloneFilterWindow> mainWindow;
 
 private:
-    std::unique_ptr<StandalonePluginHolder> pluginHolder;
+    const String appName { CharPointer_UTF8 (JucePlugin_Name) };
 };
 
 } // namespace juce

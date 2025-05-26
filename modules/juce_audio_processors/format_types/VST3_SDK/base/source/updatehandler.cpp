@@ -9,7 +9,7 @@
 //
 //-----------------------------------------------------------------------------
 // LICENSE
-// (c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+// (c) 2023, Steinberg Media Technologies GmbH, All Rights Reserved
 //-----------------------------------------------------------------------------
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -72,10 +72,7 @@ inline IPtr<FUnknown> getUnknownBase (FUnknown* unknown)
 {
 	FUnknown* result = nullptr;
 	if (unknown)
-	{
-		if (unknown->queryInterface (FObject::iid, (void**)&result) != kResultTrue)
-			unknown->queryInterface (FUnknown::iid, (void**)&result);
-	}
+		unknown->queryInterface (FUnknown::iid, (void**)&result);
 
 	return owned (result);
 }
@@ -302,7 +299,10 @@ tresult PLUGIN_API UpdateHandler::removeDependent (FUnknown* u, IDependent* depe
 							listIsEmpty = true;
 							break;
 						}
-						iterList = list.erase (iterList);
+						else
+						{
+							iterList = list.erase (iterList);
+						}
 					}
 					else
 					{

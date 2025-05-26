@@ -8,7 +8,7 @@
 //
 //-----------------------------------------------------------------------------
 // LICENSE
-// (c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+// (c) 2023, Steinberg Media Technologies GmbH, All Rights Reserved
 //-----------------------------------------------------------------------------
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -36,7 +36,6 @@
 
 #include "vstcomponentbase.h"
 #include "base/source/fstring.h"
-#include "pluginterfaces/base/funknownimpl.h"
 
 namespace Steinberg {
 namespace Vst {
@@ -130,7 +129,8 @@ tresult PLUGIN_API ComponentBase::notify (IMessage* message)
 //------------------------------------------------------------------------
 IMessage* ComponentBase::allocateMessage () const
 {
-	if (auto hostApp = U::cast<IHostApplication> (hostContext))
+	FUnknownPtr<IHostApplication> hostApp (hostContext);
+	if (hostApp)
 		return Vst::allocateMessage (hostApp);
 	return nullptr;
 }

@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -44,11 +35,11 @@
 
   ID:                 juce_dsp
   vendor:             juce
-  version:            8.0.7
+  version:            7.0.8
   name:               JUCE DSP classes
   description:        Classes for audio buffer manipulation, digital audio processing, filtering, oversampling, fast math functions etc.
   website:            http://www.juce.com/juce
-  license:            AGPLv3/Commercial
+  license:            GPL/Commercial
   minimumCppStandard: 17
 
   dependencies:       juce_audio_formats
@@ -65,8 +56,9 @@
 #define JUCE_DSP_H_INCLUDED
 
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_audio_formats/juce_audio_formats.h>
 
-#if JUCE_INTEL
+#if defined (_M_X64) || defined (__amd64__) || defined (__SSE2__) || (defined (_M_IX86_FP) && _M_IX86_FP == 2)
 
  #if defined (_M_X64) || defined (__amd64__)
   #ifndef __SSE2__
@@ -82,17 +74,15 @@
   #include <immintrin.h>
  #endif
 
-#elif JUCE_ARM
+// it's ok to check for _M_ARM below as this is only defined on Windows for Arm 32-bit
+// which has a minimum requirement of armv7, which supports neon.
+#elif defined (__ARM_NEON__) || defined (__ARM_NEON) || defined (__arm64__) || defined (__aarch64__) || defined (_M_ARM) || defined (_M_ARM64)
 
  #ifndef JUCE_USE_SIMD
   #define JUCE_USE_SIMD 1
  #endif
 
- #if JUCE_64BIT && JUCE_WINDOWS
-  #include <arm64_neon.h>
- #else
-  #include <arm_neon.h>
- #endif
+ #include <arm_neon.h>
 
 #else
 
@@ -235,7 +225,7 @@ namespace util
  #include "native/juce_SIMDNativeOps_fallback.h"
 
  // include the correct native file for this build target CPU
- #if JUCE_INTEL
+ #if defined (__i386__) || defined (__amd64__) || defined (_M_X64) || defined (_X86_) || defined (_M_IX86)
   #ifdef __AVX2__
    #include "native/juce_SIMDNativeOps_avx.h"
   #else

@@ -381,6 +381,4 @@ Used<T> toUsed (T* obj) { return Detail::Adopt::toOwnerType<Used> (obj); }
 //------------------------------------------------------------------------
 } // SKI
 #endif
-
-//------------------------------------------------------------------------
-} // namespace Steinberg
+} // Steinberg

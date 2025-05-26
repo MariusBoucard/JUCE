@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -254,7 +245,7 @@ public:
 
             case 'H':
             case 'h':
-                if (parseCoord (d, p1.x, false, Axis::x))
+                if (parseCoord (d, p1.x, false, true))
                 {
                     if (isRelative)
                         p1.x += last.x;
@@ -272,7 +263,7 @@ public:
 
             case 'V':
             case 'v':
-                if (parseCoord (d, p1.y, false, Axis::y))
+                if (parseCoord (d, p1.y, false, false))
                 {
                     if (isRelative)
                         p1.y += last.y;
@@ -500,7 +491,7 @@ private:
 
         if (tag == "g")         return parseGroupElement (xml, true);
         if (tag == "svg")       return parseSVGElement (xml);
-        if (tag == "text")      return parseText (xml, true, nullptr);
+        if (tag == "text")      return parseText (xml, true);
         if (tag == "image")     return parseImage (xml, true);
         if (tag == "switch")    return parseSwitch (xml);
         if (tag == "a")         return parseLinkElement (xml);
@@ -675,7 +666,7 @@ private:
 
     Drawable* parseUseOther (const XmlPath& xml) const
     {
-        if (auto* drawableText  = parseText (xml, false, nullptr))    return drawableText;
+        if (auto* drawableText  = parseText (xml, false))    return drawableText;
         if (auto* drawableImage = parseImage (xml, false))   return drawableImage;
 
         return nullptr;
@@ -759,7 +750,7 @@ private:
         for (auto t = dashList.getCharPointer();;)
         {
             float value;
-            if (! parseCoord (t, value, true, Axis::x))
+            if (! parseCoord (t, value, true, true))
                 break;
 
             dashLengths.add (value);
@@ -1059,83 +1050,8 @@ private:
         return op.target;
     }
 
-    /*  Handling the stateful consumption of x and y coordinates added to <text> and <tspan> elements.
-
-        <text> elements must have their own x and y attributes, or be positioned at (0, 0) since groups
-        enclosing <text> elements can't have x and y attributes.
-
-        <tspan> elements can be embedded inside <text> elements, and <tspan> elements. <text> elements
-        can't be embedded inside <text> or <tspan> elements.
-
-        A <tspan> element can have its own x, y attributes, which it will consume at the same time as
-        it consumes its parent's attributes. Its own elements will take precedence, but parent elements
-        will be consumed regardless.
-    */
-    class StringLayoutState
-    {
-    public:
-        StringLayoutState (StringLayoutState* parentIn, Array<float> xIn, Array<float> yIn)
-            : parent (parentIn),
-              xCoords (std::move (xIn)),
-              yCoords (std::move (yIn))
-        {
-        }
-
-        Point<float> getNextStartingPos() const
-        {
-            if (parent != nullptr)
-                return parent->getNextStartingPos();
-
-            return nextStartingPos;
-        }
-
-        void setNextStartingPos (Point<float> newPos)
-        {
-            nextStartingPos = newPos;
-
-            if (parent != nullptr)
-                parent->setNextStartingPos (newPos);
-        }
-
-        std::pair<std::optional<float>, std::optional<float>> popCoords()
-        {
-            auto x = xCoords.isEmpty() ? std::optional<float>{} : std::make_optional (xCoords.removeAndReturn (0));
-            auto y = yCoords.isEmpty() ? std::optional<float>{} : std::make_optional (yCoords.removeAndReturn (0));
-
-            if (parent != nullptr)
-            {
-                auto [parentX, parentY] = parent->popCoords();
-
-                if (! x.has_value())
-                    x = parentX;
-
-                if (! y.has_value())
-                    y = parentY;
-            }
-
-            return { x, y };
-        }
-
-        bool hasMoreCoords() const
-        {
-            if (! xCoords.isEmpty() || ! yCoords.isEmpty())
-                return true;
-
-            if (parent != nullptr)
-                return parent->hasMoreCoords();
-
-            return false;
-        }
-
-    private:
-        StringLayoutState* parent = nullptr;
-        Point<float> nextStartingPos;
-        Array<float> xCoords, yCoords;
-    };
-
     Drawable* parseText (const XmlPath& xml, bool shouldParseTransform,
-                         AffineTransform* additonalTransform,
-                         StringLayoutState* parentLayoutState = nullptr) const
+                         AffineTransform* additonalTransform = nullptr) const
     {
         if (shouldParseTransform && xml->hasAttribute ("transform"))
         {
@@ -1151,11 +1067,10 @@ private:
         if (! xml->hasTagName ("text") && ! xml->hasTagNameIgnoringNamespace ("tspan"))
             return nullptr;
 
-        // If a <tspan> element has no x, or y attributes of its own, it can still use the
-        // parent's yet unconsumed such attributes.
-        StringLayoutState layoutState { parentLayoutState,
-                                        getCoordList (*xml, Axis::x),
-                                        getCoordList (*xml, Axis::y) };
+        Array<float> xCoords, yCoords;
+
+        getCoordList (xCoords,  getInheritedAttribute (xml, "x"),  true, true);
+        getCoordList (yCoords,  getInheritedAttribute (xml, "y"),  true, false);
 
         auto font = getFont (xml);
         auto anchorStr = getStyleAttribute (xml, "text-anchor");
@@ -1171,20 +1086,28 @@ private:
 
                 const auto subtextElements = [&]
                 {
-                    std::vector<std::tuple<String, std::optional<float>, std::optional<float>>> result;
+                    std::vector<std::tuple<String, float, float>> result;
 
-                    for (auto it = fullText.begin(), end = fullText.end(); it != end;)
+                    if (xCoords.size() == 1)
                     {
-                        const auto pos = layoutState.popCoords();
-                        const auto next = layoutState.hasMoreCoords() ? it + 1 : end;
-                        result.emplace_back (String (it, next), pos.first, pos.second);
-                        it = next;
+                        result.emplace_back (fullText, xCoords[0], yCoords[0]);
+                        return result;
                     }
+
+                    if (xCoords.size() != yCoords.size() || fullText.length() != yCoords.size())
+                    {
+                        jassertfalse;
+                        result.emplace_back (fullText, xCoords[0], yCoords[0]);
+                        return result;
+                    }
+
+                    for (int i = 0; i < xCoords.size(); ++i)
+                        result.emplace_back (fullText.substring (i, i + 1), xCoords[i], yCoords[i]);
 
                     return result;
                 }();
 
-                for (const auto& [text, optX, optY] : subtextElements)
+                for (const auto& [text, x, y] : subtextElements)
                 {
                     auto dt = new DrawableText();
                     dc->addAndMakeVisible (dt);
@@ -1200,23 +1123,18 @@ private:
                     dt->setColour (parseColour (xml, "fill", Colours::black)
                                        .withMultipliedAlpha (parseSafeFloat (getStyleAttribute (xml, "fill-opacity", "1"))));
 
-                    const auto x = optX.value_or (layoutState.getNextStartingPos().getX());
-                    const auto y = optY.value_or (layoutState.getNextStartingPos().getY());
-
                     Rectangle<float> bounds (x, y - font.getAscent(),
-                                             GlyphArrangement::getStringWidth (font, text), font.getHeight());
+                                             font.getStringWidthFloat (text), font.getHeight());
 
                     if (anchorStr == "middle")   bounds.setX (bounds.getX() - bounds.getWidth() / 2.0f);
                     else if (anchorStr == "end") bounds.setX (bounds.getX() - bounds.getWidth());
 
                     dt->setBoundingBox (bounds);
-
-                    layoutState.setNextStartingPos ({ bounds.getRight(), y });
                 }
             }
             else if (e->hasTagNameIgnoringNamespace ("tspan"))
             {
-                dc->addAndMakeVisible (parseText (xml.getChild (e), true, nullptr, &layoutState));
+                dc->addAndMakeVisible (parseText (xml.getChild (e), true));
             }
         }
 
@@ -1225,7 +1143,7 @@ private:
 
     Font getFont (const XmlPath& xml) const
     {
-        Font f { FontOptions{} };
+        Font f;
         auto family = getStyleAttribute (xml, "font-family").unquoted();
 
         if (family.isNotEmpty())
@@ -1299,7 +1217,7 @@ private:
         }
         else
         {
-            auto linkedFile = originalFile.getSiblingFile (link);
+            auto linkedFile = originalFile.getParentDirectory().getChildFile (link);
 
             if (linkedFile.existsAsFile())
                 inputStream = linkedFile.createInputStream();
@@ -1345,9 +1263,7 @@ private:
     }
 
     //==============================================================================
-    enum class Axis { x, y };
-
-    bool parseCoord (String::CharPointerType& s, float& value, bool allowUnits, Axis axis) const
+    bool parseCoord (String::CharPointerType& s, float& value, bool allowUnits, bool isX) const
     {
         String number;
 
@@ -1357,14 +1273,14 @@ private:
             return false;
         }
 
-        value = getCoordLength (number, axis == Axis::x ? viewBoxW : viewBoxH);
+        value = getCoordLength (number, isX ? viewBoxW : viewBoxH);
         return true;
     }
 
     bool parseCoords (String::CharPointerType& s, Point<float>& p, bool allowUnits) const
     {
-        return parseCoord (s, p.x, allowUnits, Axis::x)
-            && parseCoord (s, p.y, allowUnits, Axis::y);
+        return parseCoord (s, p.x, allowUnits, true)
+            && parseCoord (s, p.y, allowUnits, false);
     }
 
     bool parseCoordsOrSkip (String::CharPointerType& s, Point<float>& p, bool allowUnits) const
@@ -1403,26 +1319,13 @@ private:
         return getCoordLength (xml->getStringAttribute (attName), sizeForProportions);
     }
 
-    Array<float> getCoordList (const XmlElement& xml, Axis axis) const
-    {
-        const String attributeName { axis == Axis::x ? "x" : "y" };
-
-        if (! xml.hasAttribute (attributeName))
-            return {};
-
-        return getCoordList (xml.getStringAttribute (attributeName), true, axis);
-    }
-
-    Array<float> getCoordList (const String& list, bool allowUnits, Axis axis) const
+    void getCoordList (Array<float>& coords, const String& list, bool allowUnits, bool isX) const
     {
         auto text = list.getCharPointer();
         float value;
-        Array<float> coords;
 
-        while (parseCoord (text, value, allowUnits, axis))
+        while (parseCoord (text, value, allowUnits, isX))
             coords.add (value);
-
-        return coords;
     }
 
     static float parseSafeFloat (const String& s)

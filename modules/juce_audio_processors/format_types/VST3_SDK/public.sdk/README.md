@@ -7,6 +7,7 @@ Here are located:
 - **AAX** Wrapper
 - **AU** Wrapper
 - **AUv3** Wrapper
+- **VST 2** Wrapper
 - InterAppAudio
 
 ## License & Usage guidelines

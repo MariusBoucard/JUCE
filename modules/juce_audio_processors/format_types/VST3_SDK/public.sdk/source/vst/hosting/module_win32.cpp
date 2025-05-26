@@ -8,7 +8,7 @@
 //
 //-----------------------------------------------------------------------------
 // LICENSE
-// (c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+// (c) 2023, Steinberg Media Technologies GmbH, All Rights Reserved
 //-----------------------------------------------------------------------------
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -34,11 +34,9 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 //-----------------------------------------------------------------------------
 
+#include "../utility/optional.h"
+#include "../utility/stringconvert.h"
 #include "module.h"
-#include "public.sdk/source/vst/utility/optional.h"
-#include "public.sdk/source/vst/utility/stringconvert.h"
-
-#include "pluginterfaces/base/funknownimpl.h"
 
 #include <shlobj.h>
 #include <windows.h>
@@ -170,11 +168,8 @@ public:
 	}
 
 	//--- -----------------------------------------------------------------------
-	HINSTANCE loadAsPackage (const std::string& inPath, std::string& errorDescription,
-	                         const char* archString = architectureString)
+	HINSTANCE loadAsPackage (const std::string& inPath, const char* archString = architectureString)
 	{
-		namespace StringConvert = Steinberg::Vst::StringConvert;
-
 		filesystem::path p (inPath);
 		auto filename = p.filename ();
 		p /= "Contents";
@@ -184,25 +179,34 @@ public:
 		HINSTANCE instance = LoadLibraryW (reinterpret_cast<LPCWSTR> (wideStr.data ()));
 #if SMTG_CPU_ARM_64EC
 		if (instance == nullptr)
-			instance = loadAsPackage (inPath, errorDescription, architectureArm64XString);
+			instance = loadAsPackage (inPath, architectureArm64XString);
 		if (instance == nullptr)
-			instance = loadAsPackage (inPath, errorDescription, architectureX64String);
+			instance = loadAsPackage (inPath, architectureX64String);
 #endif
-		if (instance == nullptr)
-			getLastError (p.string (), errorDescription);
 		return instance;
 	}
 
 	//--- -----------------------------------------------------------------------
 	HINSTANCE loadAsDll (const std::string& inPath, std::string& errorDescription)
 	{
-		namespace StringConvert = Steinberg::Vst::StringConvert;
-
 		auto wideStr = StringConvert::convert (inPath);
 		HINSTANCE instance = LoadLibraryW (reinterpret_cast<LPCWSTR> (wideStr.data ()));
 		if (instance == nullptr)
 		{
-			getLastError (inPath, errorDescription);
+			auto lastError = GetLastError ();
+			LPVOID lpMessageBuffer {nullptr};
+			if (FormatMessageA (FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+			                    nullptr, lastError, MAKELANGID (LANG_NEUTRAL, SUBLANG_DEFAULT),
+			                    (LPSTR)&lpMessageBuffer, 0, nullptr) > 0)
+			{
+				errorDescription = "LoadLibray failed: " + std::string ((char*)lpMessageBuffer);
+				LocalFree (lpMessageBuffer);
+			}
+			else
+			{
+				errorDescription =
+				    "LoadLibrary failed with error number : " + std::to_string (lastError);
+			}
 		}
 		else
 		{
@@ -214,7 +218,7 @@ public:
 	//--- -----------------------------------------------------------------------
 	bool load (const std::string& inPath, std::string& errorDescription) override
 	{
-// filesystem::u8path is deprecated in C++20
+		// filesystem::u8path is deprecated in C++20
 #if SMTG_CPP20
 		const filesystem::path tmp (inPath);
 #else
@@ -223,7 +227,7 @@ public:
 		if (filesystem::is_directory (tmp))
 		{
 			// try as package (bundle)
-			mModule = loadAsPackage (inPath, errorDescription);
+			mModule = loadAsPackage (inPath);
 		}
 		else
 		{
@@ -246,7 +250,7 @@ public:
 			errorDescription = "Calling 'InitDll' failed";
 			return false;
 		}
-		auto f = Steinberg::U::cast<Steinberg::IPluginFactory> (owned (factoryProc ()));
+		auto f = Steinberg::FUnknownPtr<Steinberg::IPluginFactory> (owned (factoryProc ()));
 		if (!f)
 		{
 			errorDescription = "Calling 'GetPluginFactory' returned nullptr";
@@ -257,27 +261,6 @@ public:
 	}
 
 	HINSTANCE mModule {nullptr};
-
-private:
-	//--- -----------------------------------------------------------------------
-	void getLastError (const std::string& inPath, std::string& errorDescription)
-	{
-		auto lastError = GetLastError ();
-		LPVOID lpMessageBuffer {nullptr};
-		if (FormatMessageA (FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, nullptr,
-		                    lastError, MAKELANGID (LANG_NEUTRAL, SUBLANG_DEFAULT),
-		                    (LPSTR)&lpMessageBuffer, 0, nullptr) > 0)
-		{
-			errorDescription = "LoadLibraryW failed for path " + inPath + ": " +
-			                   std::string ((char*)lpMessageBuffer);
-			LocalFree (lpMessageBuffer);
-		}
-		else
-		{
-			errorDescription = "LoadLibraryW failed with error number: " +
-			                   std::to_string (lastError) + " for path " + inPath;
-		}
-	}
 };
 
 //------------------------------------------------------------------------
@@ -340,8 +323,6 @@ bool isFolderSymbolicLink (const filesystem::path& p)
 //------------------------------------------------------------------------
 Optional<std::string> getKnownFolder (REFKNOWNFOLDERID folderID)
 {
-	namespace StringConvert = Steinberg::Vst::StringConvert;
-
 	PWSTR wideStr {};
 	if (FAILED (SHGetKnownFolderPath (folderID, 0, nullptr, &wideStr)))
 		return {};
@@ -397,7 +378,7 @@ VST3::Optional<filesystem::path> resolveShellLink (const filesystem::path& p)
 void addToPathList (Module::PathList& pathList, const std::string& toAdd)
 {
 #if LOG_ENABLE
-	std::cout << "=> add: " << toAdd << "\n";
+		std::cout << "=> add: " << toAdd << "\n";
 #endif
 
 	pathList.push_back (toAdd);
@@ -544,8 +525,6 @@ Module::Ptr Module::create (const std::string& path, std::string& errorDescripti
 //------------------------------------------------------------------------
 Module::PathList Module::getModulePaths ()
 {
-	namespace StringConvert = Steinberg::Vst::StringConvert;
-
 	// find plug-ins located in common/VST3
 	PathList list;
 	if (auto knownFolder = getKnownFolder (FOLDERID_UserProgramFilesCommon))
@@ -567,7 +546,7 @@ Module::PathList Module::getModulePaths ()
 #endif
 		findModules (path, list);
 	}
-
+	
 	// find plug-ins located in VST3 (application folder)
 	WCHAR modulePath[kIPPathNameMax];
 	GetModuleFileNameW (nullptr, modulePath, kIPPathNameMax);

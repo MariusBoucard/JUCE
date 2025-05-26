@@ -1,33 +1,21 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   The code included in this file is provided under the terms of the ISC license
+   http://www.isc.org/downloads/software-support-policy/isc-license. Permission
+   To use, copy, modify, and/or distribute this software for any purpose with or
+   without fee is hereby granted provided that the above copyright notice and
+   this permission notice appear in all copies.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
-
-   Or:
-
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -47,12 +35,17 @@ DECLARE_JNI_CLASS (MediaScannerConnection, "android/media/MediaScannerConnection
 #define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
  METHOD (query,                         "query",                        "(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;") \
  METHOD (openInputStream,               "openInputStream",              "(Landroid/net/Uri;)Ljava/io/InputStream;") \
- METHOD (openOutputStream,              "openOutputStream",             "(Landroid/net/Uri;)Ljava/io/OutputStream;") \
+ METHOD (openOutputStream,              "openOutputStream",             "(Landroid/net/Uri;)Ljava/io/OutputStream;")
+
+DECLARE_JNI_CLASS (ContentResolver, "android/content/ContentResolver")
+#undef JNI_CLASS_MEMBERS
+
+#define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
  METHOD (takePersistableUriPermission,      "takePersistableUriPermission",     "(Landroid/net/Uri;I)V") \
  METHOD (releasePersistableUriPermission,   "releasePersistableUriPermission",  "(Landroid/net/Uri;I)V") \
  METHOD (getPersistedUriPermissions,        "getPersistedUriPermissions",       "()Ljava/util/List;")
 
-DECLARE_JNI_CLASS (ContentResolver, "android/content/ContentResolver")
+DECLARE_JNI_CLASS_WITH_MIN_SDK (ContentResolver19, "android/content/ContentResolver", 19)
 #undef JNI_CLASS_MEMBERS
 
 #define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
@@ -100,7 +93,6 @@ DECLARE_JNI_CLASS (AndroidInputStream, "java/io/InputStream")
 DECLARE_JNI_CLASS (AndroidApplicationInfo, "android/content/pm/ApplicationInfo")
 #undef JNI_CLASS_MEMBERS
 
-
 #define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
  STATICMETHOD (buildChildDocumentsUri,              "buildChildDocumentsUri",               "(Ljava/lang/String;Ljava/lang/String;)Landroid/net/Uri;") \
  STATICMETHOD (buildDocumentUri,                    "buildDocumentUri",                     "(Ljava/lang/String;Ljava/lang/String;)Landroid/net/Uri;") \
@@ -111,18 +103,28 @@ DECLARE_JNI_CLASS (AndroidApplicationInfo, "android/content/pm/ApplicationInfo")
  STATICMETHOD (deleteDocument,                      "deleteDocument",                       "(Landroid/content/ContentResolver;Landroid/net/Uri;)Z") \
  STATICMETHOD (getDocumentId,                       "getDocumentId",                        "(Landroid/net/Uri;)Ljava/lang/String;") \
  STATICMETHOD (getRootId,                           "getRootId",                            "(Landroid/net/Uri;)Ljava/lang/String;") \
- STATICMETHOD (isDocumentUri,                       "isDocumentUri",                        "(Landroid/content/Context;Landroid/net/Uri;)Z") \
+ STATICMETHOD (isDocumentUri,                       "isDocumentUri",                        "(Landroid/content/Context;Landroid/net/Uri;)Z")
+
+DECLARE_JNI_CLASS_WITH_MIN_SDK (DocumentsContract19, "android/provider/DocumentsContract", 19)
+#undef JNI_CLASS_MEMBERS
+
+#define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
  STATICMETHOD (buildChildDocumentsUriUsingTree,     "buildChildDocumentsUriUsingTree",      "(Landroid/net/Uri;Ljava/lang/String;)Landroid/net/Uri;") \
  STATICMETHOD (buildDocumentUriUsingTree,           "buildDocumentUriUsingTree",            "(Landroid/net/Uri;Ljava/lang/String;)Landroid/net/Uri;") \
  STATICMETHOD (buildTreeDocumentUri,                "buildTreeDocumentUri",                 "(Ljava/lang/String;Ljava/lang/String;)Landroid/net/Uri;") \
  STATICMETHOD (createDocument,                      "createDocument",                       "(Landroid/content/ContentResolver;Landroid/net/Uri;Ljava/lang/String;Ljava/lang/String;)Landroid/net/Uri;") \
  STATICMETHOD (getTreeDocumentId,                   "getTreeDocumentId",                    "(Landroid/net/Uri;)Ljava/lang/String;") \
- STATICMETHOD (renameDocument,                      "renameDocument",                       "(Landroid/content/ContentResolver;Landroid/net/Uri;Ljava/lang/String;)Landroid/net/Uri;") \
+ STATICMETHOD (renameDocument,                      "renameDocument",                       "(Landroid/content/ContentResolver;Landroid/net/Uri;Ljava/lang/String;)Landroid/net/Uri;")
+
+DECLARE_JNI_CLASS_WITH_MIN_SDK (DocumentsContract21, "android/provider/DocumentsContract", 21)
+#undef JNI_CLASS_MEMBERS
+
+#define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
  STATICMETHOD (copyDocument,                        "copyDocument",                         "(Landroid/content/ContentResolver;Landroid/net/Uri;Landroid/net/Uri;)Landroid/net/Uri;") \
  STATICMETHOD (moveDocument,                        "moveDocument",                         "(Landroid/content/ContentResolver;Landroid/net/Uri;Landroid/net/Uri;Landroid/net/Uri;)Landroid/net/Uri;") \
  STATICMETHOD (removeDocument,                      "removeDocument",                       "(Landroid/content/ContentResolver;Landroid/net/Uri;Landroid/net/Uri;)Z")
 
-DECLARE_JNI_CLASS (DocumentsContract, "android/provider/DocumentsContract")
+DECLARE_JNI_CLASS_WITH_MIN_SDK (DocumentsContract24, "android/provider/DocumentsContract", 24)
 #undef JNI_CLASS_MEMBERS
 
 #define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
@@ -139,7 +141,7 @@ DECLARE_JNI_CLASS (AndroidMimeTypeMap, "android/webkit/MimeTypeMap")
  METHOD (isReadPermission,              "isReadPermission",               "()Z") \
  METHOD (isWritePermission,             "isWritePermission",              "()Z")
 
-DECLARE_JNI_CLASS (AndroidUriPermission, "android/content/UriPermission")
+DECLARE_JNI_CLASS_WITH_MIN_SDK (AndroidUriPermission, "android/content/UriPermission", 19)
 #undef JNI_CLASS_MEMBERS
 
     //==============================================================================
@@ -295,7 +297,7 @@ private:
 
             if (jniCheckHasExceptionOccurredAndClear())
             {
-                // An exception has occurred, have you acquired RuntimePermissions::readExternalStorage permission?
+                // An exception has occurred, have you acquired RuntimePermission::readExternalStorage permission?
                 jassertfalse;
                 return {};
             }
@@ -345,18 +347,45 @@ private:
 
     static Array<File> getSecondaryStorageDirectories()
     {
-        auto* env = getEnv();
-        static jmethodID m = (env->GetMethodID (AndroidContext, "getExternalFilesDirs",
-                                                "(Ljava/lang/String;)[Ljava/io/File;"));
-        if (m == nullptr)
-            return {};
-
-        auto paths = convertFileArray (LocalRef<jobject> (env->CallObjectMethod (getAppContext().get(), m, nullptr)));
-
         Array<File> results;
 
-        for (auto path : paths)
-            results.add (getMountPointForFile (path));
+        if (getAndroidSDKVersion() >= 19)
+        {
+            auto* env = getEnv();
+            static jmethodID m = (env->GetMethodID (AndroidContext, "getExternalFilesDirs",
+                                                    "(Ljava/lang/String;)[Ljava/io/File;"));
+            if (m == nullptr)
+                return {};
+
+            auto paths = convertFileArray (LocalRef<jobject> (env->CallObjectMethod (getAppContext().get(), m, nullptr)));
+
+            for (auto path : paths)
+                results.add (getMountPointForFile (path));
+        }
+        else
+        {
+            // on older SDKs other external storages are located "next" to the primary
+            // storage mount point
+            auto mountFolder = getMountPointForFile (getPrimaryStorageDirectory())
+                                    .getParentDirectory();
+
+            // don't include every folder. Only folders which are actually mountpoints
+            juce_statStruct info;
+            if (! juce_stat (mountFolder.getFullPathName(), info))
+                return {};
+
+            auto rootFsDevice = info.st_dev;
+
+            for (const auto& iter : RangedDirectoryIterator (mountFolder, false, "*", File::findDirectories))
+            {
+                auto candidate = iter.getFile();
+
+                if (juce_stat (candidate.getFullPathName(), info)
+                      && info.st_dev != rootFsDevice)
+                    results.add (candidate);
+            }
+
+        }
 
         return results;
     }
@@ -543,37 +572,15 @@ struct AndroidStreamHelpers
 };
 
 //==============================================================================
-class AndroidInputStreamWrapper final : public InputStream
+struct AndroidContentUriInputStream final :  public InputStream
 {
-public:
-    explicit AndroidInputStreamWrapper (LocalRef<jobject> streamIn)
-        : stream (std::move (streamIn))
+    explicit AndroidContentUriInputStream (const GlobalRef& uriIn)
+        : uri (uriIn),
+          stream (AndroidStreamHelpers::createStream (uri, AndroidStreamHelpers::StreamKind::input))
+    {}
+
+    ~AndroidContentUriInputStream() override
     {
-    }
-
-    AndroidInputStreamWrapper (AndroidInputStreamWrapper&& other) noexcept
-        : byteArray (std::exchange (other.byteArray, {})),
-          stream (std::exchange (other.stream, {})),
-          pos (std::exchange (other.pos, {})),
-          exhausted (std::exchange (other.exhausted, {}))
-    {
-    }
-
-    AndroidInputStreamWrapper (const AndroidInputStreamWrapper&) = delete;
-
-    AndroidInputStreamWrapper& operator= (AndroidInputStreamWrapper&& other) noexcept
-    {
-        AndroidInputStreamWrapper { std::move (other) }.swap (*this);
-        return *this;
-    }
-
-    AndroidInputStreamWrapper& operator= (const AndroidInputStreamWrapper&) = delete;
-
-    ~AndroidInputStreamWrapper() override
-    {
-        if (stream == nullptr)
-            return;
-
         getEnv()->CallVoidMethod (stream.get(), AndroidInputStream.close);
         jniCheckHasExceptionOccurredAndClear();
     }
@@ -606,15 +613,24 @@ public:
         return result;
     }
 
-    bool setPosition (int64) override
+    bool setPosition (int64 newPos) override
     {
-        return false;
+        if (newPos == pos)
+            return true;
+
+        if (pos < newPos)
+            return skipImpl (newPos - pos);
+
+        AndroidContentUriInputStream (uri).swap (*this);
+        return skipImpl (newPos);
     }
 
     int64 getPosition() override
     {
         return pos;
     }
+
+    bool openedSuccessfully() const { return stream != nullptr; }
 
     void skipNextBytes (int64 num) override
     {
@@ -636,119 +652,19 @@ private:
         return skipped == num;
     }
 
-    void swap (AndroidInputStreamWrapper& other) noexcept
+    auto tie() { return std::tie (uri, byteArray, stream, pos, exhausted); }
+
+    void swap (AndroidContentUriInputStream& other) noexcept
     {
-        std::swap (other.byteArray, byteArray);
-        std::swap (other.stream, stream);
-        std::swap (other.pos, pos);
-        std::swap (other.exhausted, exhausted);
+        auto toSwap = other.tie();
+        tie().swap (toSwap);
     }
 
+    GlobalRef uri;
     CachedByteArray byteArray;
     GlobalRef stream;
     int64 pos = 0;
     bool exhausted = false;
-};
-
-std::unique_ptr<InputStream> makeAndroidInputStreamWrapper (LocalRef<jobject> stream);
-std::unique_ptr<InputStream> makeAndroidInputStreamWrapper (LocalRef<jobject> stream)
-{
-    return std::make_unique<AndroidInputStreamWrapper> (stream);
-}
-
-//==============================================================================
-struct AndroidContentUriInputStream final : public InputStream
-{
-    AndroidContentUriInputStream (AndroidContentUriInputStream&& other) noexcept
-        : stream (std::move (other.stream)),
-          uri (std::exchange (other.uri, {}))
-    {
-    }
-
-    AndroidContentUriInputStream (const AndroidContentUriInputStream&) = delete;
-
-    AndroidContentUriInputStream& operator= (AndroidContentUriInputStream&& other) noexcept
-    {
-        AndroidContentUriInputStream { std::move (other) }.swap (*this);
-        return *this;
-    }
-
-    AndroidContentUriInputStream& operator= (const AndroidContentUriInputStream&) = delete;
-
-    int64 getTotalLength() override
-    {
-        return stream.getTotalLength();
-    }
-
-    bool isExhausted() override
-    {
-        return stream.isExhausted();
-    }
-
-    int read (void* destBuffer, int maxBytesToRead) override
-    {
-        return stream.read (destBuffer, maxBytesToRead);
-    }
-
-    bool setPosition (int64 newPos) override
-    {
-        if (newPos == getPosition())
-            return true;
-
-        if (getPosition() < newPos)
-            return skipImpl (newPos - getPosition());
-
-        auto newStream = fromUri (uri);
-
-        if (! newStream.has_value())
-            return false;
-
-        *this = std::move (*newStream);
-        return skipImpl (newPos);
-    }
-
-    int64 getPosition() override
-    {
-        return stream.getPosition();
-    }
-
-    void skipNextBytes (int64 num) override
-    {
-        stream.skipNextBytes (num);
-    }
-
-    static std::optional<AndroidContentUriInputStream> fromUri (const GlobalRef& uriIn)
-    {
-        const auto nativeStream = AndroidStreamHelpers::createStream (uriIn, AndroidStreamHelpers::StreamKind::input);
-
-        if (nativeStream == nullptr)
-            return {};
-
-        return AndroidContentUriInputStream { AndroidInputStreamWrapper { nativeStream }, uriIn };
-    }
-
-private:
-    AndroidContentUriInputStream (AndroidInputStreamWrapper streamIn, const GlobalRef& uriIn)
-        : stream (std::move (streamIn)),
-          uri (uriIn)
-    {
-    }
-
-    bool skipImpl (int64 num)
-    {
-        const auto oldPosition = getPosition();
-        skipNextBytes (num);
-        return getPosition() == oldPosition + num;
-    }
-
-    void swap (AndroidContentUriInputStream& other) noexcept
-    {
-        std::swap (other.stream, stream);
-        std::swap (other.uri, uri);
-    }
-
-    AndroidInputStreamWrapper stream;
-    GlobalRef uri;
 };
 
 //==============================================================================
@@ -803,7 +719,12 @@ String File::getVersion() const
 
 static File getDocumentsDirectory()
 {
-    return getWellKnownFolder ("DIRECTORY_DOCUMENTS");
+    auto* env = getEnv();
+
+    if (getAndroidSDKVersion() >= 19)
+        return getWellKnownFolder ("DIRECTORY_DOCUMENTS");
+
+    return juceFile (LocalRef<jobject> (env->CallStaticObjectMethod (AndroidEnvironment, AndroidEnvironment.getDataDirectory)));
 }
 
 static File getAppDataDir (bool dataDir)
@@ -935,9 +856,9 @@ private:
 
 void FileOutputStream::flushInternal()
 {
-    if (fileHandle.isValid())
+    if (fileHandle != nullptr)
     {
-        if (fsync (fileHandle.get()) == -1)
+        if (fsync (getFD (fileHandle)) == -1)
             status = getResultForErrno();
 
         // This stuff tells the OS to asynchronously update the metadata

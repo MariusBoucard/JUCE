@@ -1,33 +1,24 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
+   End User License Agreement: www.juce.com/juce-7-licence
+   Privacy Policy: www.juce.com/juce-privacy-policy
 
-   Or:
+   Or: You may also use this code under the terms of the GPL v3 (see
+   www.gnu.org/licenses).
 
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -1447,6 +1438,23 @@ private:
 };
 
 //==============================================================================
+class LambdaTimer final : private Timer
+{
+public:
+    explicit LambdaTimer (std::function<void()> c) : callback (c) {}
+
+    ~LambdaTimer() noexcept override { stopTimer(); }
+
+    using Timer::startTimer;
+    using Timer::startTimerHz;
+    using Timer::stopTimer;
+
+private:
+    void timerCallback() override { callback(); }
+
+    std::function<void()> callback;
+};
+
 struct UiEventListener : public MessageBufferInterface<MessageHeader>
 {
     virtual int idle() = 0;
@@ -1474,7 +1482,7 @@ public:
 private:
     Messages<UiMessageHeader, RealtimeWriteTrait> processorToUi;
     std::set<UiEventListener*> activeUis;
-    TimedCallback timer { [this]
+    LambdaTimer timer { [this]
     {
         for (auto* l : activeUis)
             if (l->idle() != 0)
@@ -1777,13 +1785,6 @@ private:
     SupportsTime time = SupportsTime::no;
 };
 
-struct FreeString { void operator() (void* ptr) const noexcept { lilv_free (ptr); } };
-
-static File bundlePathFromUri (const char* uri)
-{
-    return File { std::unique_ptr<char, FreeString> { lilv_file_uri_parse (uri, nullptr) }.get() };
-}
-
 class Plugins
 {
 public:
@@ -1797,17 +1798,6 @@ public:
     const LilvPlugin* getByUri (const NodeUri& uri) const
     {
         return lilv_plugins_get_by_uri (plugins, uri.get());
-    }
-
-    const LilvPlugin* getByFile (const File& file) const
-    {
-        for (const auto* plugin : *this)
-        {
-            if (bundlePathFromUri (lilv_node_as_uri (lilv_plugin_get_bundle_uri (plugin))) == file)
-                return plugin;
-        }
-
-        return nullptr;
     }
 
 private:
@@ -2144,6 +2134,8 @@ private:
     std::map<String, ControlPort*> symbolToControlPortMap;
     JUCE_LEAK_DETECTOR (PortMap)
 };
+
+struct FreeString { void operator() (void* ptr) const noexcept { lilv_free (ptr); } };
 
 class PluginState
 {
@@ -2591,6 +2583,11 @@ public:
     auto withBundlePath (File v) const noexcept { return withMember (*this, &UiInstanceArgs::bundlePath, std::move (v)); }
     auto withPluginUri  (URL v)  const noexcept { return withMember (*this, &UiInstanceArgs::pluginUri,  std::move (v)); }
 };
+
+static File bundlePathFromUri (const char* uri)
+{
+    return File { std::unique_ptr<char, FreeString> { lilv_file_uri_parse (uri, nullptr) }.get() };
+}
 
 /*
     Creates and holds a UI instance for a plugin with a specific URI, using the provided descriptor.
@@ -4327,7 +4324,7 @@ private:
     Component::SafePointer<Editor> editorPointer = nullptr;
     String uiBundleUri;
     UiDescriptor uiDescriptor;
-    TimedCallback changedParameterFlusher;
+    LambdaTimer changedParameterFlusher;
 };
 
 template <>
@@ -5216,17 +5213,10 @@ public:
     void findAllTypesForFile (OwnedArray<PluginDescription>& result,
                               const String& identifier)
     {
-        if (File::isAbsolutePath (identifier))
-            world->loadBundle (world->newFileUri (nullptr, File::addTrailingSeparator (identifier).toRawUTF8()));
+        auto desc = getDescription (findPluginByUri (identifier));
 
-        for (const auto& plugin : { findPluginByUri (identifier), findPluginByFile (identifier) })
-        {
-            if (auto desc = getDescription (plugin); desc.fileOrIdentifier.isNotEmpty())
-            {
-                result.add (std::make_unique<PluginDescription> (desc));
-                break;
-            }
-        }
+        if (desc.fileOrIdentifier.isNotEmpty())
+            result.add (std::make_unique<PluginDescription> (desc));
     }
 
     bool fileMightContainThisPluginType (const String& file) const
@@ -5236,7 +5226,7 @@ public:
         const auto numBytes = file.getNumBytesAsUTF8();
         std::vector<uint8_t> vec (numBytes + 1, 0);
         std::copy (data, data + numBytes, vec.begin());
-        return serd_uri_string_has_scheme (vec.data()) || file.endsWith (".lv2");
+        return serd_uri_string_has_scheme (vec.data());
     }
 
     String getNameOfPluginFromIdentifier (const String& identifier)
@@ -5496,11 +5486,6 @@ private:
     const LilvPlugin* findPluginByUri (const String& s)
     {
         return world->getAllPlugins().getByUri (world->newUri (s.toRawUTF8()));
-    }
-
-    const LilvPlugin* findPluginByFile (const File& f)
-    {
-        return world->getAllPlugins().getByFile (f);
     }
 
     template <typename Fn>

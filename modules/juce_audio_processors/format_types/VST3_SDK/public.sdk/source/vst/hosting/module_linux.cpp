@@ -8,7 +8,7 @@
 //
 //-----------------------------------------------------------------------------
 // LICENSE
-// (c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+// (c) 2023, Steinberg Media Technologies GmbH, All Rights Reserved
 //-----------------------------------------------------------------------------
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -35,11 +35,8 @@
 //-----------------------------------------------------------------------------
 
 #include "module.h"
-#include "public.sdk/source/vst/utility/optional.h"
-#include "public.sdk/source/vst/utility/stringconvert.h"
-
-#include "pluginterfaces/base/funknownimpl.h"
-
+#include "../utility/optional.h"
+#include "../utility/stringconvert.h"
 #include <algorithm>
 #include <dlfcn.h>
 #include <sys/types.h>
@@ -65,12 +62,12 @@
 #include <experimental/filesystem>
 namespace filesystem = std::experimental::filesystem;
 
-#else // USE_EXPERIMENTAL_FS == 0
+#else // USE_FILESYSTEM == 0
 
 #include <filesystem>
 namespace filesystem = std::filesystem;
 
-#endif // USE_EXPERIMENTAL_FS
+#endif // USE_FILESYSTEM
 
 //------------------------------------------------------------------------
 extern "C" {
@@ -218,7 +215,7 @@ public:
 			errorDescription = "Calling 'ModuleEntry' failed";
 			return false;
 		}
-		auto f = Steinberg::U::cast<Steinberg::IPluginFactory> (owned (factoryProc ()));
+		auto f = Steinberg::FUnknownPtr<Steinberg::IPluginFactory> (owned (factoryProc ()));
 		if (!f)
 		{
 			errorDescription = "Calling 'GetPluginFactory' returned nullptr";

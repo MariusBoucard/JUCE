@@ -1,33 +1,21 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE framework.
-   Copyright (c) Raw Material Software Limited
+   This file is part of the JUCE library.
+   Copyright (c) 2022 - Raw Material Software Limited
 
-   JUCE is an open source framework subject to commercial or open source
+   JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By downloading, installing, or using the JUCE framework, or combining the
-   JUCE framework with any other source code, object code, content or any other
-   copyrightable work, you agree to the terms of the JUCE End User Licence
-   Agreement, and all incorporated terms including the JUCE Privacy Policy and
-   the JUCE Website Terms of Service, as applicable, which will bind you. If you
-   do not agree to the terms of these agreements, we will not license the JUCE
-   framework to you, and you must discontinue the installation or download
-   process and cease use of the JUCE framework.
+   The code included in this file is provided under the terms of the ISC license
+   http://www.isc.org/downloads/software-support-policy/isc-license. Permission
+   To use, copy, modify, and/or distribute this software for any purpose with or
+   without fee is hereby granted provided that the above copyright notice and
+   this permission notice appear in all copies.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
-   JUCE Privacy Policy: https://juce.com/juce-privacy-policy
-   JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
-
-   Or:
-
-   You may also use this code under the terms of the AGPLv3:
-   https://www.gnu.org/licenses/agpl-3.0.en.html
-
-   THE JUCE FRAMEWORK IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL
-   WARRANTIES, WHETHER EXPRESSED OR IMPLIED, INCLUDING WARRANTY OF
-   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED.
+   JUCE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES, WHETHER
+   EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR PURPOSE, ARE
+   DISCLAIMED.
 
   ==============================================================================
 */
@@ -48,6 +36,13 @@ void Logger::outputDebugString (const String& text)
 
 static int findNumberOfPhysicalCores() noexcept
 {
+   #if JUCE_MINGW
+    // Not implemented in MinGW
+    jassertfalse;
+
+    return 1;
+   #else
+
     DWORD bufferSize = 0;
     GetLogicalProcessorInformation (nullptr, &bufferSize);
 
@@ -71,6 +66,8 @@ static int findNumberOfPhysicalCores() noexcept
     {
         return info.Relationship == RelationProcessorCore;
     });
+
+   #endif // JUCE_MINGW
 }
 
 //==============================================================================
@@ -80,7 +77,7 @@ static int findNumberOfPhysicalCores() noexcept
   #pragma intrinsic (__rdtsc)
  #endif
 
- #if JUCE_CLANG
+ #if JUCE_MINGW || JUCE_CLANG
 static void callCPUID (int result[4], uint32 type)
 {
   uint32 la = (uint32) result[0], lb = (uint32) result[1],
@@ -244,47 +241,66 @@ static DebugFlagsInitialiser debugFlagsInitialiser;
 #endif
 
 //==============================================================================
-RTL_OSVERSIONINFOW getWindowsVersionInfo();
-RTL_OSVERSIONINFOW getWindowsVersionInfo()
-{
-    using RtlGetVersion = LONG (WINAPI*) (PRTL_OSVERSIONINFOW);
+#if JUCE_MINGW
+ static uint64 getWindowsVersion()
+ {
+     auto filename = _T ("kernel32.dll");
+     DWORD handle = 0;
 
-    JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wcast-function-type")
+     if (auto size = GetFileVersionInfoSize (filename, &handle))
+     {
+         HeapBlock<char> data (size);
 
-    static const auto rtlGetVersion = std::invoke ([]() -> RtlGetVersion
-    {
-        if (auto* moduleHandle = ::GetModuleHandleW (L"ntdll.dll"))
-            if (auto* result = (RtlGetVersion) ::GetProcAddress (moduleHandle, "RtlGetVersion"))
-                return result;
+         if (GetFileVersionInfo (filename, handle, size, data))
+         {
+             VS_FIXEDFILEINFO* info = nullptr;
+             UINT verSize = 0;
 
-        // Unable to locate function! Please let the JUCE team know your current platform/environment
-        // so that we can fix this issue.
-        jassertfalse;
-        return {};
-    });
+             if (VerQueryValue (data, (LPCTSTR) _T ("\\"), (void**) &info, &verSize))
+                 if (size > 0 && info != nullptr && info->dwSignature == 0xfeef04bd)
+                     return ((uint64) info->dwFileVersionMS << 32) | (uint64) info->dwFileVersionLS;
+         }
+     }
 
-    JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+     return 0;
+ }
+#else
+ RTL_OSVERSIONINFOW getWindowsVersionInfo();
+ RTL_OSVERSIONINFOW getWindowsVersionInfo()
+ {
+     RTL_OSVERSIONINFOW versionInfo = {};
 
-    if (rtlGetVersion == nullptr)
-        return {};
+     if (auto* moduleHandle = ::GetModuleHandleW (L"ntdll.dll"))
+     {
+         using RtlGetVersion = LONG (WINAPI*) (PRTL_OSVERSIONINFOW);
 
-    RTL_OSVERSIONINFOW versionInfo = {};
+         if (auto* rtlGetVersion = (RtlGetVersion) ::GetProcAddress (moduleHandle, "RtlGetVersion"))
+         {
+             versionInfo.dwOSVersionInfoSize = sizeof (versionInfo);
+             LONG STATUS_SUCCESS = 0;
 
-    versionInfo.dwOSVersionInfoSize = sizeof (versionInfo);
-    LONG STATUS_SUCCESS = 0;
+             if (rtlGetVersion (&versionInfo) != STATUS_SUCCESS)
+                 versionInfo = {};
+         }
+     }
 
-    if (rtlGetVersion (&versionInfo) != STATUS_SUCCESS)
-        versionInfo = {};
-
-    return versionInfo;
-}
+     return versionInfo;
+ }
+#endif
 
 SystemStats::OperatingSystemType SystemStats::getOperatingSystemType()
 {
+   #if JUCE_MINGW
+    const auto v = getWindowsVersion();
+    const auto major = (v >> 48) & 0xffff;
+    const auto minor = (v >> 32) & 0xffff;
+    const auto build = (v >> 16) & 0xffff;
+   #else
     const auto versionInfo = getWindowsVersionInfo();
     const auto major = versionInfo.dwMajorVersion;
     const auto minor = versionInfo.dwMinorVersion;
     const auto build = versionInfo.dwBuildNumber;
+   #endif
 
     jassert (major <= 10); // need to add support for new version!
 
@@ -303,19 +319,44 @@ SystemStats::OperatingSystemType SystemStats::getOperatingSystemType()
 
 String SystemStats::getOperatingSystemName()
 {
-    const auto type = getOperatingSystemType();
+    const char* name = "Unknown OS";
 
-    if (type == Windows11)      return "Windows 11";
-    if (type == Windows10)      return "Windows 10";
-    if (type == Windows8_1)     return "Windows 8.1";
-    if (type == Windows8_0)     return "Windows 8.0";
-    if (type == Windows7)       return "Windows 7";
-    if (type == WinVista)       return "Windows Vista";
-    if (type == WinXP)          return "Windows XP";
-    if (type == Win2000)        return "Windows 2000";
+    switch (getOperatingSystemType())
+    {
+        case Windows11:         name = "Windows 11";        break;
+        case Windows10:         name = "Windows 10";        break;
+        case Windows8_1:        name = "Windows 8.1";       break;
+        case Windows8_0:        name = "Windows 8.0";       break;
+        case Windows7:          name = "Windows 7";         break;
+        case WinVista:          name = "Windows Vista";     break;
+        case WinXP:             name = "Windows XP";        break;
+        case Win2000:           name = "Windows 2000";      break;
 
-    jassertfalse;
-    return "Unknown OS";
+        case MacOSX:            JUCE_FALLTHROUGH
+        case Windows:           JUCE_FALLTHROUGH
+        case Linux:             JUCE_FALLTHROUGH
+        case Android:           JUCE_FALLTHROUGH
+        case iOS:               JUCE_FALLTHROUGH
+
+        case MacOSX_10_7:       JUCE_FALLTHROUGH
+        case MacOSX_10_8:       JUCE_FALLTHROUGH
+        case MacOSX_10_9:       JUCE_FALLTHROUGH
+        case MacOSX_10_10:      JUCE_FALLTHROUGH
+        case MacOSX_10_11:      JUCE_FALLTHROUGH
+        case MacOSX_10_12:      JUCE_FALLTHROUGH
+        case MacOSX_10_13:      JUCE_FALLTHROUGH
+        case MacOSX_10_14:      JUCE_FALLTHROUGH
+        case MacOSX_10_15:      JUCE_FALLTHROUGH
+        case MacOS_11:          JUCE_FALLTHROUGH
+        case MacOS_12:          JUCE_FALLTHROUGH
+        case MacOS_13:          JUCE_FALLTHROUGH
+
+        case UnknownOS:         JUCE_FALLTHROUGH
+        case WASM:              JUCE_FALLTHROUGH
+        default:                jassertfalse; break; // !! new type of OS?
+    }
+
+    return name;
 }
 
 String SystemStats::getDeviceDescription()
@@ -345,23 +386,18 @@ bool SystemStats::isOperatingSystem64Bit()
    #if JUCE_64BIT
     return true;
    #else
-    using LPFN_ISWOW64PROCESS = BOOL (WINAPI*) (HANDLE, PBOOL);
+    typedef BOOL (WINAPI* LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
 
-    JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wcast-function-type")
+    const auto moduleHandle = GetModuleHandleA ("kernel32");
 
-    static const auto fnIsWow64Process = std::invoke ([]() -> LPFN_ISWOW64PROCESS
+    if (moduleHandle == nullptr)
     {
-        if (auto* moduleHandle = ::GetModuleHandleA ("kernel32"))
-            if (auto* result = (LPFN_ISWOW64PROCESS) ::GetProcAddress (moduleHandle, "IsWow64Process"))
-                return result;
-
-        // Unable to locate function! Please let the JUCE team know your current platform/environment
-        // so that we can fix this issue.
         jassertfalse;
-        return {};
-    });
+        return false;
+    }
 
-    JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+    LPFN_ISWOW64PROCESS fnIsWow64Process
+        = (LPFN_ISWOW64PROCESS) GetProcAddress (moduleHandle, "IsWow64Process");
 
     BOOL isWow64 = FALSE;
 
@@ -463,7 +499,7 @@ static int64 juce_getClockCycleCounter() noexcept
   #elif JUCE_ARM
    #if defined (_M_ARM)
     return __rdpmccntr64();
-   #elif defined (_M_ARM64) || defined (_M_ARM64EC)
+   #elif defined (_M_ARM64)
     return _ReadStatusReg (ARM64_PMCCNTR_EL0);
    #else
     #error Unknown arm architecture
