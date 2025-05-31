@@ -4,3 +4,6 @@
 [submodule "projects/BitCrusher"]
 	path = projects/BitCrusher
 	url = https://github.com/MariusBoucard/BitCrusher
+[submodule "projects/template"]
+	path = projects/template
+	url = https://github.com/MariusBoucard/template.git
