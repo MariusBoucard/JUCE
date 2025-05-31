@@ -7,3 +7,9 @@
 [submodule "projects/template"]
 	path = projects/template
 	url = https://github.com/MariusBoucard/template.git
+[submodule "pythonLib"]
+	path = pythonLib
+	url = https://github.com/MariusBoucard/pythonLib.git
+[submodule "libraries/AudioDSPTools"]
+	path = libraries/AudioDSPTools
+	url = https://github.com/MariusBoucard/AudioDSPTools.git
