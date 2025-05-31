@@ -59,8 +59,7 @@ profile
 extras/Projucer/JUCECompileEngine.dylib
 extras
 libraries/IPP
-libraries/AudioDSPTools/
-libraries/NeuralAmpModelerCore/
+
 .idea
 **/cmake-build*
 
