@@ -1,6 +1,6 @@
-[submodule "projects/GainPlugin"]
-	path = projects/GainPlugin
-	url = https://github.com/MariusBoucard/GainPlugin
+[submodule "projects/NeuralAmpPlugin"]
+	path = projects/NeuralAmpPlugin
+	url = https://github.com/MariusBoucard/NeuralAmpPlugin
 [submodule "projects/BitCrusher"]
 	path = projects/BitCrusher
 	url = https://github.com/MariusBoucard/BitCrusher
@@ -13,3 +13,6 @@
 [submodule "libraries/AudioDSPTools"]
 	path = libraries/AudioDSPTools
 	url = https://github.com/MariusBoucard/AudioDSPTools.git
+[submodule "libraries/NeuralAmpModelerCore"]
+	path = libraries/NeuralAmpModelerCore
+	url = https://github.com/MariusBoucard/NeuralAmpModelerCore.git
