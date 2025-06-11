@@ -1,6 +1,8 @@
 option(BUILD_BITCRUSHER "Build the BitCrusher plugin" ON)
 option(BUILD_NEURALAMP "Build the GainPlugin plugin" ON)
 option(BUILD_TEMPLATE "Build the template plugin" ON)
+option(BUILD_TEMPLATEBIS "Build the template plugin" ON)
+
 option(BUILD_EQSTRIP "Build the template plugin" ON)
 
 if(BUILD_BITCRUSHER)
@@ -17,4 +19,7 @@ endif()
 
 if(BUILD_TEMPLATE)
     add_subdirectory(template)
+endif()
+if(BUILD_TEMPLATEBIS)
+    add_subdirectory(templateBis)
 endif()
