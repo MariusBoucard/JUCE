@@ -16,3 +16,6 @@
 [submodule "libraries/NeuralAmpModelerCore"]
 	path = libraries/NeuralAmpModelerCore
 	url = https://github.com/MariusBoucard/NeuralAmpModelerCore.git
+[submodule "projects/EQStrip"]
+	path = projects/EQStrip
+	url = https://github.com/MariusBoucard/EQStrip.git
