@@ -47,7 +47,7 @@ void SkeletonAudioProcessor::processBlock(AudioBuffer<float>& inBuffer, MidiBuff
 {
     juce::ScopedNoDenormals noDenormals;
     const int numSamples = inBuffer.getNumSamples();
-    const int numIn = getTotalNumInputChannels();
+    const int numIn = 2;
     const int numOut = getTotalNumOutputChannels();
 
     // 1. Sécurité : Vérifiez que vos buffers internes sont assez grands
