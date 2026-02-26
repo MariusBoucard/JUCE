@@ -19,3 +19,6 @@
 [submodule "projects/EQStrip"]
 	path = projects/EQStrip
 	url = https://github.com/MariusBoucard/EQStrip.git
+[submodule "projects/faustPedalSaturator"]
+	path = projects/faustPedalSaturator
+	url = git@github.com:MariusBoucard/faustPedalSaturator.git
