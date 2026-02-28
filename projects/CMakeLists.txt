@@ -11,7 +11,7 @@ if(BUILD_BITCRUSHER)
 endif()
 
 if(BUILD_NEURALAMP)
-   # add_subdirectory(NeuralAmpPlugin)
+   add_subdirectory(NeuralAmpPlugin)
 endif()
 
 if(BUILD_EQSTRIP)
