@@ -15,9 +15,6 @@ set(faustPedalSaturator_jucer_FILE
 )
 
 
-set(JUCE_MODULES_GLOBAL_PATH "C:/Users/Marius/Documents/JUCE/modules")
-
-
 jucer_project_begin(
   JUCER_FORMAT_VERSION "1"
   PROJECT_FILE "${faustPedalSaturator_jucer_FILE}"
@@ -305,6 +302,14 @@ jucer_export_target_configuration(
   OPTIMISATION "Maximise speed"
 )
 
+jucer_export_target("Code::Blocks (Linux)"
+        )
+
+jucer_export_target_configuration("Code::Blocks (Linux)"
+        NAME "Debug"
+        DEBUG_MODE ON
+        BINARY_NAME "testWebView"
+        )
 jucer_project_end()
 
 set(VST3_DESTINATION_PATH "D:/vstcreation/faustPedalSaturator.vst3/Contents/x86_64-win")

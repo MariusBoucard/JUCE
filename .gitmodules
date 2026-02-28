@@ -1,24 +1,32 @@
 [submodule "projects/NeuralAmpPlugin"]
 	path = projects/NeuralAmpPlugin
 	url = git@github.com:MariusBoucard/NeuralAmpPlugin.git
+	branch = master
 [submodule "projects/BitCrusher"]
 	path = projects/BitCrusher
 	url = git@github.com:MariusBoucard/BitCrusher.git
+    branch = master
 [submodule "projects/template"]
 	path = projects/template
 	url = git@github.com:MariusBoucard/template.git
+    branch = master
 [submodule "pythonLib"]
 	path = pythonLib
 	url = git@github.com:MariusBoucard/pythonLib.git
+    branch = master
 [submodule "libraries/AudioDSPTools"]
 	path = libraries/AudioDSPTools
 	url = git@github.com:MariusBoucard/AudioDSPTools.git
+    branch = master
 [submodule "libraries/NeuralAmpModelerCore"]
 	path = libraries/NeuralAmpModelerCore
 	url = git@github.com:MariusBoucard/NeuralAmpModelerCore.git
+    branch = master
 [submodule "projects/EQStrip"]
 	path = projects/EQStrip
 	url = git@github.com:MariusBoucard/EQStrip.git
+	branch = master
 [submodule "projects/faustPedalSaturator"]
 	path = projects/faustPedalSaturator
 	url = git@github.com:MariusBoucard/faustPedalSaturator.git
+	branch = master
