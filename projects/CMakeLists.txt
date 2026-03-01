@@ -11,10 +11,13 @@ if(BUILD_BITCRUSHER)
 endif()
 
 if(BUILD_NEURALAMP)
+    message("building neural amp")
     add_subdirectory(NeuralAmpPlugin)
 endif()
 
 if(BUILD_EQSTRIP)
+    message("building eq strip")
+
     add_subdirectory(EqStrip)
 endif()
 

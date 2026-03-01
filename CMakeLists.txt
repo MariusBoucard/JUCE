@@ -1,36 +1,26 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(JUCE VERSION 7.0.8 LANGUAGES C CXX)
+project(JUCE VERSION 8.0.7 LANGUAGES C CXX)
 ## add_compile_options(-Ob2 -GR)
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "MSVC Runtime Library" FORCE)
 endif()
-
-set(JUCE_MODULES_DIR "${JUCE_SOURCE_DIR}/modules" CACHE INTERNAL
-    "The path to JUCE modules")
-
-option(JUCE_MODULES_ONLY "Only configure the JUCE modules" OFF)
-
-add_definitions(-DJUCE_MODAL_LOOPS_PERMITTED=1)
-
-if(JUCE_MODULES_ONLY)
-    return()
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
-
-#set_directory_properties(PROPERTIES
-#    JUCE_COMPANY_NAME       "JUCE"
-#    JUCE_COMPANY_WEBSITE    "https://juce.com"
-#    JUCE_COMPANY_EMAIL      "info@juce.com"
-#    JUCE_COMPANY_COPYRIGHT  "Copyright (c) - Raw Material Software Limited")
-
-#option(JUCE_COPY_PLUGIN_AFTER_BUILD
-#    "Whether or not plugins should be installed to the system after building" OFF)
-#set_property(GLOBAL PROPERTY JUCE_COPY_PLUGIN_AFTER_BUILD ${JUCE_COPY_PLUGIN_AFTER_BUILD})
-
-#set(CMAKE_CXX_EXTENSIONS FALSE)
-#
-#juce_disable_default_flags()
-
+#include(extras/Build/CMake/JUCEModuleSupport.cmake)
+#set(JUCE_SOURCE_DIR "C:\\Users\\Marius\\Documents\\JUCE")
+#set(JUCE_MODULES_DIR "${JUCE_SOURCE_DIR}\\modules" CACHE INTERNAL
+#    "The path to JUCE modules")
+#add_definitions(-DJUCE_GRAPHICS_INCLUDE_SHEENBIDI=1)
+option(JUCE_MODULES_ONLY "Only configure the JUCE modules" ON)
+set(JUCE_MODULES_ONLY OFF)
+add_definitions(-DJUCE_MODAL_LOOPS_PERMITTED=1)
+add_subdirectory(JUCE)
+#add_subdirectory(extras/Build/CMake)
+if(JUCE_MODULES_ONLY)
+    #return()
+endif()
 
 if(JUCE_GLOBAL_AAX_SDK_PATH)
     juce_set_aax_sdk_path("${JUCE_GLOBAL_AAX_SDK_PATH}")
@@ -46,9 +36,9 @@ endif()
 
 add_subdirectory(libraries)
 
-option(JUCE_BUILD_PROJECTS "Add build targets for the DemoRunner and PIPs" OFF)
+#option(JUCE_BUILD_PROJECTS "Add build targets for the DemoRunner and PIPs" OFF)
 
-set(JUCE_MODULES_GLOBAL_PATH "C:/Users/Marius/Documents/JUCE/modules")
+#set(JUCE_MODULES_GLOBAL_PATH "C:/Users/Marius/Documents/JUCE/modules")
 if(JUCE_BUILD_PROJECTS)
     add_subdirectory(projects)
 endif()
