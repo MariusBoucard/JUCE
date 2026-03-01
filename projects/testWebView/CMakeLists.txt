@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-project("faustPedalSaturator")
+project("testWebView")
 
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../FRUT/prefix/FRUT/cmake")
@@ -10,8 +10,8 @@ include(Reprojucer)
 set(CMAKE_CXX_STANDARD 17)
 
 
-set(faustPedalSaturator_jucer_FILE
-  "${CMAKE_CURRENT_LIST_DIR}/faustPedalSaturator.jucer"
+set(testWebView_jucer_FILE
+  "${CMAKE_CURRENT_LIST_DIR}/testWebView.jucer"
 )
 
 
@@ -20,12 +20,12 @@ set(JUCE_MODULES_GLOBAL_PATH "C:/Users/Marius/Documents/JUCE/modules")
 
 jucer_project_begin(
   JUCER_FORMAT_VERSION "1"
-  PROJECT_FILE "${faustPedalSaturator_jucer_FILE}"
+  PROJECT_FILE "${testWebView_jucer_FILE}"
   PROJECT_ID "e0aFdb"
 )
 
 jucer_project_settings(
-  PROJECT_NAME "faustPedalSaturator"
+  PROJECT_NAME "testWebView"
   PROJECT_VERSION "1.0.0"
   COMPANY_NAME "JUCE"
   COMPANY_WEBSITE "http://juce.com"
@@ -33,7 +33,7 @@ jucer_project_settings(
   ADD_USING_NAMESPACE_JUCE_TO_JUCE_HEADER ON
   DISPLAY_THE_JUCE_SPLASH_SCREEN ON # Required for closed source applications without an Indie or Pro JUCE license
   PROJECT_TYPE "Audio Plug-in"
-  BUNDLE_IDENTIFIER "com.JUCE.faustPedalSaturator"
+  BUNDLE_IDENTIFIER "com.JUCE.testWebView"
   CXX_LANGUAGE_STANDARD "C++17"
   PREPROCESSOR_DEFINITIONS
     "PIP_JUCE_EXAMPLES_DIRECTORY=QzpcVXNlcnNcTWFyaXVzXERlc2t0b3BcQUlQbHVnaW5cSnVjZVxleGFtcGxlcw=="
@@ -46,14 +46,14 @@ jucer_audio_plugin_settings(
     "VST3"
     "Standalone"
   # PLUGIN_CHARACTERISTICS
-  PLUGIN_NAME "faustPedalSaturator"
-  PLUGIN_DESCRIPTION "faustPedalSaturator"
+  PLUGIN_NAME "testWebView"
+  PLUGIN_DESCRIPTION "testWebView"
   PLUGIN_MANUFACTURER "Ballzzy"
   PLUGIN_MANUFACTURER_CODE "BALL"
-  PLUGIN_CODE "SAkf"
+  PLUGIN_CODE "WVkf"
   # PLUGIN_CHANNEL_CONFIGURATIONS
-  PLUGIN_AAX_IDENTIFIER "com.JUCE.faustPedalSaturator"
-  PLUGIN_AU_EXPORT_PREFIX "faustPedalSaturatorAU"
+  PLUGIN_AAX_IDENTIFIER "com.JUCE.testWebView"
+  PLUGIN_AU_EXPORT_PREFIX "testWebViewAU"
   PLUGIN_AU_MAIN_TYPE "kAudioUnitType_Effect"
   PLUGIN_AU_IS_SANDBOX_SAFE ON
   PLUGIN_VST3_CATEGORY
@@ -65,18 +65,19 @@ jucer_audio_plugin_settings(
   PLUGIN_VST_LEGACY_CATEGORY "kPlugCategEffect"
 )
 
-jucer_project_files("faustPedalSaturator/Source"
+jucer_project_files("testWebView/Source"
 # Compile   Xcode     Binary    File
 #           Resource  Resource
  x         .         .         "Source/FaustPlugin.h"
-#x         .         .          "Source/FaustSync.cpp"
+        x    .       .         "Source/DemoUtilities.h"
+#"Source/FaustSync.cpp"
 x         .         .         "Source/Main.cpp"
 x         .         .         "Source/PluginAudioProcessor.cpp"
 x         .         .         "Source/PluginAudioProcessor.h"
 x         .         .         "Source/PluginAudioProcessor.hpp"
 )
 #
-jucer_project_files("faustPedalSaturator/Source/dsp"
+jucer_project_files("testWebView/Source/dsp"
 ## Compile   Xcode     Binary    File
 ##           Resource  Resource
   x         .         .         "Source/dsp/Mappers.cpp"
@@ -88,7 +89,7 @@ jucer_project_files("faustPedalSaturator/Source/dsp"
   x         .         .         "Source/dsp/Processor.hpp"
 )
 #
-jucer_project_files("faustPedalSaturator/Source/dsp/Bones"
+jucer_project_files("testWebView/Source/dsp/Bones"
 ## Compile   Xcode     Binary    File
 ##           Resource  Resource
 #        x         .         .         "Source/dsp/Bones/GainBone.h"
@@ -97,7 +98,7 @@ jucer_project_files("faustPedalSaturator/Source/dsp/Bones"
         #
 )
 #
-jucer_project_files("faustPedalSaturator/Source/looknfeel"
+jucer_project_files("testWebView/Source/looknfeel"
 ## Compile   Xcode     Binary    File
 ##           Resource  Resource
 #  x         .         .         "Source/looknfeel/GeneralLookAndFeel.h"
@@ -106,7 +107,7 @@ x         .         .         "Source/looknfeel/ToogleButtonLookAndFeel.h"
 #  x         .         .         "Source/looknfeel/TopBarLookAndFeel.h"
 )
 #
-jucer_project_files("faustPedalSaturator/Source/ui"
+jucer_project_files("testWebView/Source/ui"
 ## Compile   Xcode     Binary    File
 ##           Resource  Resource
 x         .         .         "Source/ui/gui.cpp"
@@ -114,7 +115,7 @@ x         .         .         "Source/ui/gui.h"
 x         .         .         "Source/ui/gui.hpp"
 )
 #
-jucer_project_files("faustPedalSaturator/Source/ui/components"
+jucer_project_files("testWebView/Source/ui/components"
 ## Compile   Xcode     Binary    File
 ##           Resource  Resource
   x         .         .         "Source/ui/components/TopBarComponent.cpp"
@@ -122,7 +123,7 @@ jucer_project_files("faustPedalSaturator/Source/ui/components"
 )
 #
 #
-jucer_project_files("faustPedalSaturator/ressources/knob"
+jucer_project_files("testWebView/ressources/knob"
 ## Compile   Xcode     Binary    File
 ##           Resource  Resource
 #
@@ -130,7 +131,7 @@ jucer_project_files("faustPedalSaturator/ressources/knob"
 )
 #
 #
-jucer_project_files("faustPedalSaturator/ressources/plate"
+jucer_project_files("testWebView/ressources/plate"
   .         x         x         "Source/ressources/plate/plate.png"
 )
 
@@ -217,15 +218,19 @@ jucer_project_module(
   PATH "${JUCE_MODULES_GLOBAL_PATH}"
 )
 
-#jucer_project_module(
- # juce_dsp
-#  PATH "${JUCE_MODULES_GLOBAL_PATH}"
+jucer_project_module(
+  juce_dsp
+  PATH "${JUCE_MODULES_GLOBAL_PATH}"
   # JUCE_ASSERTION_FIRFILTER
   # JUCE_DSP_USE_INTEL_MKL
   # JUCE_DSP_USE_SHARED_FFTW
   # JUCE_DSP_USE_STATIC_FFTW
   # JUCE_DSP_ENABLE_SNAP_TO_ZERO
-#)
+)
+jucer_project_module(
+        juce_audio_basics
+        PATH "${JUCE_MODULES_GLOBAL_PATH}"
+)
 
 jucer_project_module(
   juce_events
@@ -256,8 +261,8 @@ jucer_project_module(
 jucer_project_module(
   juce_gui_extra
   PATH "${JUCE_MODULES_GLOBAL_PATH}"
-  # JUCE_WEB_BROWSER
-  # JUCE_USE_WIN_WEBVIEW2
+  JUCE_WEB_BROWSER
+  JUCE_USE_WIN_WEBVIEW2
   # JUCE_ENABLE_LIVE_CONSTANT_EDITOR
 )
 
@@ -270,7 +275,7 @@ jucer_export_target_configuration(
   "Xcode (macOS)"
   NAME "Debug"
   DEBUG_MODE ON
-  BINARY_NAME "faustPedalSaturator"
+  BINARY_NAME "testWebView"
   OPTIMISATION "-O0 (no optimisation)"
 )
 
@@ -278,7 +283,7 @@ jucer_export_target_configuration(
   "Xcode (macOS)"
   NAME "Release"
   DEBUG_MODE OFF
-  BINARY_NAME "faustPedalSaturator"
+  BINARY_NAME "testWebView"
   OPTIMISATION "-O3 (fastest with safe optimisations)"
 )
 
@@ -293,7 +298,7 @@ jucer_export_target_configuration(
   "Visual Studio 2022"
   NAME "Debug"
   DEBUG_MODE ON
-  BINARY_NAME "faustPedalSaturator"
+  BINARY_NAME "testWebView"
   OPTIMISATION "No optimisation"
 )
 
@@ -301,21 +306,21 @@ jucer_export_target_configuration(
   "Visual Studio 2022"
   NAME "Release"
   DEBUG_MODE OFF
-  BINARY_NAME "faustPedalSaturator"
+  BINARY_NAME "testWebView"
   OPTIMISATION "Maximise speed"
 )
 
 jucer_project_end()
 
-set(VST3_DESTINATION_PATH "D:/vstcreation/faustPedalSaturator.vst3/Contents/x86_64-win")
+set(VST3_DESTINATION_PATH "D:/vstcreation/testWebView.vst3/Contents/x86_64-win")
 
-add_custom_command(TARGET faustPedalSaturator_VST3 POST_BUILD
+add_custom_command(TARGET testWebView_VST3 POST_BUILD
         # 1. Create the necessary internal folder structure
         COMMAND ${CMAKE_COMMAND} -E make_directory "${VST3_DESTINATION_PATH}"
 
         # 2. Copy the binary into that specific subfolder
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<TARGET_FILE:faustPedalSaturator_VST3>"
-        "${VST3_DESTINATION_PATH}/$<TARGET_FILE_NAME:faustPedalSaturator_VST3>"
+        "$<TARGET_FILE:testWebView_VST3>"
+        "${VST3_DESTINATION_PATH}/$<TARGET_FILE_NAME:testWebView_VST3>"
         COMMENT "Creating VST3 Bundle structure in D:/vstcreation"
 )
