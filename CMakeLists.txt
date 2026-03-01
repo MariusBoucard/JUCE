@@ -48,6 +48,7 @@ add_subdirectory(libraries)
 
 option(JUCE_BUILD_PROJECTS "Add build targets for the DemoRunner and PIPs" OFF)
 
+set(JUCE_MODULES_GLOBAL_PATH "C:/Users/Marius/Documents/JUCE/modules")
 if(JUCE_BUILD_PROJECTS)
     add_subdirectory(projects)
 endif()
