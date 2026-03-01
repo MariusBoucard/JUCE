@@ -1,6 +1,3 @@
-[submodule "projects/NeuralAmpPlugin"]
-	path = projects/NeuralAmpPlugin
-	url = https://github.com/MariusBoucard/NeuralAmpPlugin
 [submodule "projects/BitCrusher"]
 	path = projects/BitCrusher
 	url = https://github.com/MariusBoucard/BitCrusher
@@ -22,3 +19,6 @@
 [submodule "projects/faustPedalSaturator"]
 	path = projects/faustPedalSaturator
 	url = git@github.com:MariusBoucard/faustPedalSaturator.git
+[submodule "projects/NeuralAmpPlugin"]
+	path = projects/NeuralAmpPlugin
+	url = https://github.com/MariusBoucard/NeuralAmpPlugin
