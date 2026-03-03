@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
+#set(CMAKE_CXX_STANDARD 20)
 
 project(JUCE VERSION 8.0.7 LANGUAGES C CXX)
 ## add_compile_options(-Ob2 -GR)
@@ -9,10 +10,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
-#execute_process(
-#        COMMAND nuget install Microsoft.Web.WebView2 -OutputDirectory "${CMAKE_BINARY_DIR}/_deps/Nuget"
-#        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-#)
+
 set(JUCE_WEBVIEW2_PACKAGE_LOCATION
         "${CMAKE_BINARY_DIR}/_deps/Nuget"
 )
@@ -41,7 +39,7 @@ endif()
 
 add_subdirectory(libraries)
 
-#option(JUCE_BUILD_PROJECTS "Add build targets for the DemoRunner and PIPs" OFF)
+option(JUCE_BUILD_PROJECTS "Add build targets for plugins" ON)
 
 #set(JUCE_MODULES_GLOBAL_PATH "C:/Users/Marius/Documents/JUCE/modules")
 if(JUCE_BUILD_PROJECTS)

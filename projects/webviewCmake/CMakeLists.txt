@@ -18,9 +18,8 @@ juce_add_plugin(JuceWebViewPlugin
     # This will force JUCE to look for the WebView2 NuGet package on Windows
     NEEDS_WEBVIEW2 TRUE
 )
-
-get_target_property(PRODUCT_NAME ${PROJECT_NAME} JUCE_PRODUCT_NAME)
-get_target_property(COMPANY_NAME ${PROJECT_NAME} JUCE_COMPANY_NAME)
+set(PRODUCT_NAME "${PROJECT_NAME}")
+set(COMPANY_NAME "BALLZZY")
 target_compile_definitions(${PROJECT_NAME} PRIVATE
   JUCE_PRODUCT_NAME="${PRODUCT_NAME}"
   JUCE_COMPANY_NAME="${COMPANY_NAME}"

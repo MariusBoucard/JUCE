@@ -17,7 +17,6 @@ endif()
 
 if(BUILD_EQSTRIP)
     message("building eq strip")
-
     add_subdirectory(EQStrip)
 endif()
 
@@ -31,6 +30,8 @@ if(BUILD_FAUST_PEDAL)
     add_subdirectory(faustPedalSaturator)
 endif()
 if(BUILD_TEST_WEBVIEW)
+    message("building testwebView")
+
     add_subdirectory(testWebView)
 endif()
 

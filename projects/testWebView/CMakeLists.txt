@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.15)
 
 project(testWebView VERSION 1.0.0)
 
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -14,7 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # For this example, assuming JUCE is at C:/Users/Marius/Documents/JUCE/JUCE
 # add_subdirectory("C:/Users/Marius/Documents/JUCE/JUCE" JUCE)
 
-message(STATUS "TO RUN FAUST COMPILATION / RUN : faust -i -a .\\faustMinimal.h .\\pedalSaturator.dsp  -o faust.h")
+message(STATUS "BUILDING textWebView")
 
 # Define the plugin
 juce_add_plugin(testWebView
@@ -26,6 +25,8 @@ juce_add_plugin(testWebView
         FORMATS VST3 Standalone
         PRODUCT_NAME "testWebView"
         BUNDLE_ID "com.JUCE.testWebView"
+        NEEDS_WEB_BROWSER TRUE
+        NEEDS_WEBVIEW2 TRUE
 
         # VST3 specific settings
         VST3_CATEGORIES Fx
@@ -119,6 +120,7 @@ target_compile_definitions(testWebView
         PUBLIC
         JUCE_WEB_BROWSER=1
         JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
+
       #  JUCE_USE_WIN_WEBVIEW2=1
        # JUCE_WEB_BROWSER_RESOURCE_PROVIDER_AVAILABLE=1
         JUCE_USE_CURL=0
@@ -128,6 +130,11 @@ target_compile_definitions(testWebView
         JUCE_DISPLAY_SPLASH_SCREEN=1
         JUCE_STRICT_REFCOUNTEDPOINTER=1
         PRIVATE
+)
+# Sets the include directories of the plugin project.
+target_include_directories(${PROJECT_NAME}
+        PUBLIC
+        "C:/Users/Marius/.nuget/packages/microsoft.web.webview2/1.0.3485.44/build/native/include/"  # Add this line
 )
 
 # Platform-specific settings
