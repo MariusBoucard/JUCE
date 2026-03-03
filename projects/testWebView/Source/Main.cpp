@@ -6,15 +6,15 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
-namespace juce {
-#include "FaustPlugin.h"
+//#include "WebViewPluginDemo.h"
+#include "juce_audio_processors_headless/juce_audio_processors_headless.h"
+#include "PluginAudioProcessor.h"
 
     //==============================================================================
     juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
     {
         //return new FaustPlugInAudioProcessor();
-        return new WebViewPluginAudioProcessorWrapper();
-        //return new PluginAudioProcessor();
+       // return new WebViewPluginAudioProcessorWrapper();
+        return new PluginAudioProcessor();
     }
-}
+

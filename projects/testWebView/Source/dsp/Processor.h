@@ -1,12 +1,14 @@
 #pragma once
-#include <JuceHeader.h>
+#include <juce_audio_processors_headless/juce_audio_processors_headless.h>
+#include <juce_data_structures/juce_data_structures.h>
+
 #include "ParameterSetup.h"
 #include "Bones/GainBone.h"
 #include "Processor.hpp"
 # include "Bones/FaustMultiheadFeedback.h";
 
 //==============================================================================
-class SkeletonAudioProcessor final : public AudioProcessor {
+class SkeletonAudioProcessor final : public juce::AudioProcessor {
 public:
     //==============================================================================
     SkeletonAudioProcessor(juce::AudioProcessorValueTreeState &inParameters, ParameterSetup &inParameterSetup);
@@ -52,19 +54,19 @@ public:
         delete[] inputs;
     }
 
-    void processBlock(AudioBuffer<float> &buffer, MidiBuffer &) override;
+    void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &) override;
 
-    void updateMeter(bool isOutput, AudioBuffer<float> &buffer, int numSamples, int numChannels);
+    void updateMeter(bool isOutput, juce::AudioBuffer<float> &buffer, int numSamples, int numChannels);
 
     //==============================================================================
-    AudioProcessorEditor *createEditor() override {
+    juce::AudioProcessorEditor *createEditor() override {
         return nullptr;
     }
 
     bool hasEditor() const override { return false; }
 
     //==============================================================================
-    const String getName() const override { return "template"; }
+    const juce::String getName() const override { return "template"; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     double getTailLengthSeconds() const override { return 0; }
@@ -76,9 +78,9 @@ public:
     void setCurrentProgram(int) override {
     }
 
-    const String getProgramName(int) override { return "None"; }
+    const juce::String getProgramName(int) override { return "None"; }
 
-    void changeProgramName(int, const String &) override {
+    void changeProgramName(int, const juce::String &) override {
     }
 
 
@@ -96,7 +98,7 @@ public:
         return (mainInLayout == mainOutLayout && (!mainInLayout.isDisabled()));
     }
 
-     AudioProcessorValueTreeState&  SkeletonAudioProcessor::getCustomParameterTree() {
+    juce::AudioProcessorValueTreeState&  SkeletonAudioProcessor::getCustomParameterTree() {
         return mParameters;
     }
 
@@ -104,7 +106,7 @@ public:
     void initState() {
     }
 
-    void getStateInformation(MemoryBlock &destData) override {
+    void getStateInformation(juce::MemoryBlock &destData) override {
     }
 
     void setStateInformation(const void *data, int sizeInBytes) override {

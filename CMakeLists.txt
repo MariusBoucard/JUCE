@@ -8,14 +8,19 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
-#include(extras/Build/CMake/JUCEModuleSupport.cmake)
-#set(JUCE_SOURCE_DIR "C:\\Users\\Marius\\Documents\\JUCE")
-#set(JUCE_MODULES_DIR "${JUCE_SOURCE_DIR}\\modules" CACHE INTERNAL
-#    "The path to JUCE modules")
-#add_definitions(-DJUCE_GRAPHICS_INCLUDE_SHEENBIDI=1)
+
+#execute_process(
+#        COMMAND nuget install Microsoft.Web.WebView2 -OutputDirectory "${CMAKE_BINARY_DIR}/_deps/Nuget"
+#        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+#)
+set(JUCE_WEBVIEW2_PACKAGE_LOCATION
+        "${CMAKE_BINARY_DIR}/_deps/Nuget"
+)
 option(JUCE_MODULES_ONLY "Only configure the JUCE modules" ON)
 set(JUCE_MODULES_ONLY OFF)
 add_definitions(-DJUCE_MODAL_LOOPS_PERMITTED=1)
+
+set(JUCE_WEBVIEW2_PACKAGE_LOCATION "C:/Users/Marius/.nuget/packages")
 add_subdirectory(JUCE)
 #add_subdirectory(extras/Build/CMake)
 if(JUCE_MODULES_ONLY)

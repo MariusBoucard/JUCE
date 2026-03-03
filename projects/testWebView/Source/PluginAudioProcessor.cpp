@@ -3,8 +3,8 @@
 
 
 PluginAudioProcessor::PluginAudioProcessor()
-    : AudioProcessor(BusesProperties().withInput("Input", AudioChannelSet::stereo())
-          .withOutput("Output", AudioChannelSet::stereo()))
+    : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo())
+          .withOutput("Output", juce::AudioChannelSet::stereo()))
       , mParameters(*this, nullptr, "PARAMETERS", createParameterLayout())
       , mParameterSetup(mParameters)
       , mSkeletonProcessor(mParameters, mParameterSetup)
@@ -22,6 +22,6 @@ PluginAudioProcessor::~PluginAudioProcessor() {
     }
 }
 
-void PluginAudioProcessor::processBlock(AudioBuffer<float> &buffer, MidiBuffer &a) {
+void PluginAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &a) {
     mSkeletonProcessor.processBlock(buffer, a);
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <JuceHeader.h>
 
 class KnobLookAndFeel : public juce::LookAndFeel_V4
 {

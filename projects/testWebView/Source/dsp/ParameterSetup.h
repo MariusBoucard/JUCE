@@ -1,11 +1,13 @@
 #pragma once
+#include <juce_core/juce_core.h>
+#include <juce_audio_processors/juce_audio_processors.h>
 
-#include <JuceHeader.h>
 #include <atomic>
 #include <mutex>
 #include <deque>
 #include <functional>
 #include "Mappers.h"
+
 
 struct FilterCoefficients
 {

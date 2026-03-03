@@ -1,7 +1,8 @@
 #include "gui.h"
-
+#include <juce_gui_extra/juce_gui_extra.h>
+#include "BinaryData.h"
 #include "../dsp/Processor.h"
-#include <JuceHeader.h>
+
 int RootViewComponent::ROOT_WIDTH = 900;
 int RootViewComponent::ROOT_HEIGHT = 550;
 
@@ -9,57 +10,79 @@ RootViewComponent::RootViewComponent(juce::AudioProcessor& processor)
     : AudioProcessorEditor(processor)
     , mProcessor(processor)
 {
- //   auto imageData = BinaryData::plate_png;
-   // auto imageDataSize = BinaryData::plate_pngSize;
+    setSize(900, 550);
+    mWebView = std::make_unique<juce::WebBrowserComponent>(
+        juce::WebBrowserComponent::Options{}
+            .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+    );
 
-    //mImage = juce::ImageFileFormat::loadFrom(imageData, imageDataSize);
+    addAndMakeVisible(mWebView.get());
 
-    if (mImage.isNull())
-        DBG("Failed to load image from resources");
-
-    setSize(mImage.getBounds().getWidth(), mImage.getBounds().getHeight());
-    defineKnobLayout();
-    configureNodes(processor);
+    mWebView->goToURL("https://example.com");
+   /* mWebView = std::make_unique<juce::WebBrowserComponent>(
+        juce::WebBrowserComponent::Options{}
+            .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+            .withWinWebView2Options(
+                juce::WebBrowserComponent::Options::WinWebView2{}
+                    .withUserDataFolder(
+                        juce::File::getSpecialLocation(
+                            juce::File::tempDirectory)))
+            .withResourceProvider(
+                [this](const juce::String& url)
+                {
+                    return getResource(url);
+                },
+                "app://local")
+    );
+    DBG("JUCE_USE_WIN_WEBVIEW2: " + juce::String(JUCE_USE_WIN_WEBVIEW2));
+    addAndMakeVisible(mWebView.get());
+    jassert(mWebView != nullptr);
+   mWebView->goToURL("data:text/html,<h1>Hello</h1>");*/
 }
+std::optional<juce::WebBrowserComponent::Resource>
+RootViewComponent::getResource(const juce::String& url)
+{
+    auto path = url == "/" ? "index.html"
+                           : url.fromFirstOccurrenceOf("/", false, false);
 
+    if (path == "index.html")
+    {
+        std::vector<std::byte> data;
+
+        data.resize(BinaryData::index_htmlSize);
+
+        std::memcpy(data.data(),
+                    BinaryData::index_html,
+                    BinaryData::index_htmlSize);
+
+        return juce::WebBrowserComponent::Resource{
+            std::move(data),
+            "text/html"
+        };
+    }
+
+    return std::nullopt;
+}
 RootViewComponent::~RootViewComponent()
 {
-	
-
+    mWebView.reset();
 }
 
-void RootViewComponent::setSliderAttachement(AudioProcessor& inProcessoe)
-{
-    SkeletonAudioProcessor* ampAudioProcessor = dynamic_cast<SkeletonAudioProcessor*>(&inProcessoe);
 
-}
 
-void RootViewComponent::updatePath()
-{
-}
+
 
 void RootViewComponent::paint(juce::Graphics& g)
 {
-    // g.fillAll(juce::Colours::black);
-    //
-    // if (!mImage.isNull())
-    // {
-    //     auto bounds = getLocalBounds().toFloat();
-    //     auto imageBounds = mImage.getBounds().toFloat();
-    //     auto scale = juce::jmin(bounds.getWidth() / imageBounds.getWidth(),
-    //         bounds.getHeight() / imageBounds.getHeight());
-    //     auto scaledImageBounds = imageBounds.withSize(imageBounds.getWidth() * scale,
-    //         imageBounds.getHeight() * scale);
-    //     g.drawImage(mImage, scaledImageBounds);
-    // }
-    // else
-    // {
-    //     g.setColour(juce::Colours::white);
-    //     g.drawText("Image not found", getLocalBounds(), juce::Justification::centred);
-    // }
+    // Background color (only visible if WebView doesn't cover entire area)
+  //  g.fillAll(juce::Colours::black);
 }
 
 void RootViewComponent::resized()
 {
-    auto bounds = getLocalBounds();
+    // Make the WebView fill the entire component
+    if (mWebView != nullptr)
+    {
+        mWebView->setBounds(getLocalBounds());
+    }
 }

@@ -111,7 +111,7 @@ endif()
 # example PIPs (there's a lot of them!), specify -DJUCE_BUILD_EXAMPLES=ON and/or
 # -DJUCE_BUILD_EXTRAS=ON when initially generating your build tree.
 
-option(JUCE_BUILD_EXTRAS "Add build targets for the Projucer and other tools" OFF)
+option(JUCE_BUILD_EXTRAS "Add build targets for the Projucer and other tools" ON)
 
 if(JUCE_BUILD_EXTRAS)
    # add_subdirectory(extras)
@@ -120,7 +120,7 @@ endif()
 option(JUCE_BUILD_EXAMPLES "Add build targets for the DemoRunner and PIPs" OFF)
 
 if(JUCE_BUILD_EXAMPLES)
-   # add_subdirectory(examples)
+    #add_subdirectory(examples)
 endif()
 
 string(CONCAT webview2_option_message "Location that overrides the default directory where our "

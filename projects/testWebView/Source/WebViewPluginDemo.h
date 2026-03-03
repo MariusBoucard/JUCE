@@ -53,8 +53,8 @@
 *******************************************************************************/
 
 #pragma once
-#include <juce_dsp/juce_dsp.h>
 
+#include "../../JUCE/examples/Assets/DemoUtilities.h"
 
 namespace ID
 {
@@ -76,7 +76,7 @@ public:
     }
 
     template <typename T>
-    void push (juce::dsp::AudioBlock<T> b)
+    void push (dsp::AudioBlock<T> b)
     {
         jassert (b.getNumChannels() == buffer.getNumChannels());
 
@@ -137,7 +137,7 @@ public:
 
 private:
     HeapBlock<char> data;
-    juce::dsp::AudioBlock<float> buffer;
+    dsp::AudioBlock<float> buffer;
     int64 writeIx = 0;
 };
 
@@ -158,7 +158,7 @@ public:
     void compute (Span<float> output)
     {
         auto* ptr = output.begin();
-        auto result = juce::dsp::AudioBlock<float> (&ptr, 1, output.size());
+        auto result = dsp::AudioBlock<float> (&ptr, 1, output.size());
         result.clear();
         auto analysisData = fftTmp.getSubBlock (0, analysisWindowWidth);
 
@@ -178,10 +178,10 @@ public:
     static inline constexpr int analysisWindowOverlap = analysisWindowWidth / 2;
 
 private:
-    juce::dsp::FFT fft { fftOrder };
+    dsp::FFT fft { fftOrder };
 
     HeapBlock<char> fftTmpData;
-    juce::dsp::AudioBlock<float> fftTmp { fftTmpData, 1, (size_t) (2 * fft.getSize()) };
+    dsp::AudioBlock<float> fftTmp { fftTmpData, 1, (size_t) (2 * fft.getSize()) };
 
     CircularBuffer buffer { 1,       (int) analysisWindowWidth
                                    + (numAnalysisWindows - 1) * analysisWindowOverlap };
@@ -192,7 +192,7 @@ class WebViewPluginAudioProcessor  : public AudioProcessor
 {
 public:
     //==============================================================================
-    WebViewPluginAudioProcessor (juce::AudioProcessorValueTreeState::ParameterLayout layout);
+    WebViewPluginAudioProcessor (AudioProcessorValueTreeState::ParameterLayout layout);
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;

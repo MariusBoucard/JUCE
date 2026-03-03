@@ -3,7 +3,7 @@ option(BUILD_NEURALAMP "Build the GainPlugin plugin" ON)
 option(BUILD_TEMPLATE "Build the template plugin" ON)
 option(BUILD_TEMPLATEBIS "Build the template plugin" ON)
 option(BUILD_FAUST_PEDAL "Build the template plugin" ON)
-
+option(BUILD_TEST_WEBVIEW "" ON)
 option(BUILD_EQSTRIP "Build the template plugin" ON)
 
 if(BUILD_BITCRUSHER)
@@ -30,3 +30,8 @@ endif()
 if(BUILD_FAUST_PEDAL)
     add_subdirectory(faustPedalSaturator)
 endif()
+if(BUILD_TEST_WEBVIEW)
+    add_subdirectory(testWebView)
+endif()
+
+add_subdirectory(webviewCmake)

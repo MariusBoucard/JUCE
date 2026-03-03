@@ -29,11 +29,14 @@
 *******************************************************************************/
 
 #pragma once
+#include <juce_audio_processors_headless/juce_audio_processors_headless.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+
 #include "ui/gui.h"
 #include "dsp/Processor.h"
 #include "dsp/ParameterSetup.h"
 
-class PluginAudioProcessor final : public AudioProcessor,
+class PluginAudioProcessor final : public juce::AudioProcessor,
                                     public juce::AudioProcessorValueTreeState::Listener
 {
 public:
@@ -103,17 +106,17 @@ public:
        // delete mFaustUI;
     }
 
-    void processBlock(AudioBuffer<float>& buffer, MidiBuffer&) override;
+    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override;
 
-    AudioProcessorEditor* createEditor() override {
-        //auto editor = new RootViewComponent(mSkeletonProcessor);
-        auto editor = new GenericAudioProcessorEditor(this);
+    juce::AudioProcessorEditor* createEditor() override {
+        auto editor = new RootViewComponent(mSkeletonProcessor);
+        //auto editor = new juce::GenericAudioProcessorEditor(this);
 
         return editor;
     }
     bool hasEditor() const override                        { return true;   }
 
-    const String getName() const override                  { return "Template"; }
+    const juce::String getName() const override                  { return "Template"; }
     bool acceptsMidi() const override                      { return false; }
     bool producesMidi() const override                     { return false; }
     double getTailLengthSeconds() const override           { return 0; }
@@ -121,11 +124,11 @@ public:
     int getNumPrograms() override                          { return 1; }
     int getCurrentProgram() override                       { return 0; }
     void setCurrentProgram (int) override                  {}
-    const String getProgramName (int) override             { return "None"; }
-    void changeProgramName (int, const String&) override   {}
+    const juce::String getProgramName (int) override             { return "None"; }
+    void changeProgramName (int, const juce::String&) override   {}
 
 
-    void getStateInformation (MemoryBlock& destData) override
+    void getStateInformation (juce::MemoryBlock& destData) override
     {
         juce::MemoryOutputStream stream(destData, true);
         mParameters.state.writeToStream(stream);  
