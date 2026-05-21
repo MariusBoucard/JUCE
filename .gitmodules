@@ -22,3 +22,6 @@
 [submodule "projects/NeuralAmpPlugin"]
 	path = projects/NeuralAmpPlugin
 	url = https://github.com/MariusBoucard/NeuralAmpPlugin
+[submodule "projects/delayVue"]
+	path = projects/delayVue
+	url = git@github.com:MariusBoucard/ballzzyDelay.git
