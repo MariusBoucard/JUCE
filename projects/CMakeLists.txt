@@ -5,6 +5,7 @@ option(BUILD_TEMPLATEBIS "Build the template plugin" ON)
 option(BUILD_FAUST_PEDAL "Build the template plugin" ON)
 option(BUILD_TEST_WEBVIEW "" ON)
 option(BUILD_EQSTRIP "Build the template plugin" ON)
+option(BUILD_MAYERISM "Build the template plugin" ON)
 
 if(BUILD_BITCRUSHER)
     add_subdirectory(BitCrusher)
@@ -34,5 +35,9 @@ if(BUILD_TEST_WEBVIEW)
 
     add_subdirectory(testWebView)
 endif()
+if(BUILD_MAYERISM)
+    message("building Mayersim")
 
-add_subdirectory(webviewCmake)
+    add_subdirectory(Mayerism)
+endif ()
+add_subdirectory(delayVue)

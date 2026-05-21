@@ -117,7 +117,6 @@ public:
 
         if (returnIfNoPendingMessages && ! PeekMessage (&m, nullptr, 0, 0, PM_NOREMOVE))
             return false;
-
         if (GetMessage (&m, nullptr, 0, 0) >= 0)
         {
            #if JUCE_MODULE_AVAILABLE_juce_gui_extra
