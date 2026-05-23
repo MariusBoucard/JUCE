@@ -38,6 +38,6 @@ endif()
 if(BUILD_MAYERISM)
     message("building Mayersim")
 
-    add_subdirectory(Mayerism)
+   # add_subdirectory(Mayerism)
 endif ()
 add_subdirectory(delayVue)
