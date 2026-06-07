@@ -18,7 +18,7 @@ endif()
 
 if(BUILD_EQSTRIP)
     message("building eq strip")
-    add_subdirectory(EQStrip)
+   # add_subdirectory(EQStrip)
 endif()
 
 if(BUILD_TEMPLATE)
