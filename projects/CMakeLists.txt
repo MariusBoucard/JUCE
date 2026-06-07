@@ -40,4 +40,5 @@ if(BUILD_MAYERISM)
 
    # add_subdirectory(Mayerism)
 endif ()
-add_subdirectory(delayVue)
+#add_subdirectory(delayVue)
+add_subdirectory(BallzzyArchetype)

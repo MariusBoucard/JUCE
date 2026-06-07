@@ -1,0 +1,49 @@
+fpm \
+  -s dir \
+  -t deb \
+  -n "ballzzy-archetype" \
+  -v 0.0.1 \
+  --description "Ballzzy DSP Archetype, loading NAM files" \
+  --maintainer "Marius Boucard Bocciarelli" \
+  --depends "libasound2" \
+  --depends "libfontconfig1" \
+  --depends "libfreetype6" \
+  --depends "libstdc++6" \
+  --depends "libexpat1" \
+  --depends "zlib1g" \
+  --depends "libbz2-1.0" \
+  --depends "libpng16-16" \
+  --depends "libbrotli1" \
+      --after-install postinstall.sh \
+  "./Ballzzy Amp=/usr/local/bin/BallzzyAmp" \
+  "./Ballzzy Amp.vst3=/usr/local/lib/vst3/BallzzyAmp.vst3" \
+  "./BallzzyAmp.desktop=/usr/share/applications/BallzzyAmp.desktop" \
+    "./ballzzy-amp.png=/usr/share/icons/hicolor/256x256/apps/ballzzy-amp.png" \
+    "./BallzzyAmp.desktop=/usr/share/applications/BallzzyAmp.desktop" \
+
+
+///// FEDORA AND RPM DISTROS
+
+fpm \
+  -s dir \
+  -t rpm \
+  -n "ballzzy-archetype" \
+  -v 0.0.1 \
+  --description "Ballzzy DSP Archetype, loading NAM files" \
+  --maintainer "Marius Boucard Bocciarelli" \
+  --depends "alsa-lib" \
+  --depends "fontconfig" \
+  --depends "freetype" \
+  --depends "libstdc++" \
+  --depends "expat" \
+  --depends "zlib" \
+  --depends "bzip2-libs" \
+  --depends "libpng" \
+  --depends "brotli" \
+  --depends "glibc" \
+      --after-install postinstall.sh \
+  "./Ballzzy Amp=/usr/local/bin/BallzzyAmp" \
+  "./Ballzzy Amp.vst3=/usr/local/lib/vst3/BallzzyAmp.vst3" \
+  "./BallzzyAmp.desktop=/usr/share/applications/BallzzyAmp.desktop" \
+    "./ballzzy-amp.png=/usr/share/icons/hicolor/256x256/apps/ballzzy-amp.png" \
+    "./BallzzyAmp.desktop=/usr/share/applications/BallzzyAmp.desktop" \
