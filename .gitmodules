@@ -10,9 +10,11 @@
 [submodule "libraries/AudioDSPTools"]
 	path = libraries/AudioDSPTools
 	url = https://github.com/MariusBoucard/AudioDSPTools.git
+	branch = main
 [submodule "libraries/NeuralAmpModelerCore"]
 	path = libraries/NeuralAmpModelerCore
 	url = https://github.com/MariusBoucard/NeuralAmpModelerCore.git
+    branch = main
 [submodule "projects/EQStrip"]
 	path = projects/EQStrip
 	url = https://github.com/MariusBoucard/EQStrip.git

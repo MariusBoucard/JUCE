@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Ballzzy Amp
+GenericName=Guitar Amplifier
+Comment=Ballzzy DSP Archetype, loading NAM files
+Exec=/usr/local/bin/BallzzyAmp
+Icon=ballzzy-amp
+Categories=AudioVideo;Audio;Music;
+Terminal=false
+StartupNotify=true
